@@ -34,7 +34,7 @@ class AlienInvasion:
         self.aliens = pygame.sprite.Group()
         self.create_fleet()
 
-        self.bg_color = (230, 230, 230) #Setting the background color
+        self.bg_color = (0, 0, 0) #Setting the background color
         self.game_active = False
 
         # Make the Play Button
