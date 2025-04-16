@@ -11,7 +11,10 @@ class Alien(Sprite):
         self.settings = ai_game.settings
 
         #Load the alien image and set its starting position
-        self.image = pygame.image.load('SpaceGame/images/alien.bmp')
+        original_image = pygame.image.load('SpaceGame/images/alien2.png')
+        self.image = pygame.transform.scale(original_image, (75, 50))
+        
+        # self.image = pygame.image.load('SpaceGame/images/alien2.png')
         self.rect = self.image.get_rect()
 
         #This will start a new alien near the top left of the screen.
