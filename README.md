@@ -32,6 +32,8 @@ Alien Invasion
 ### Game Summary  
 Alien Invasion is a simple top-down arcade shooter inspired by the classic *Space Invaders*. You control a spaceship that slides left and right along the bottom of the screen. Your job is to shoot down waves of aliens before they reach you. If you destroy them all, the game starts a new wave and keeps going. It’s fast, fun, and we’re using it as a creative way to explore operating system concepts through gameplay.
 
+As of now, the game is work in progress. We hope to implement a fun user experience with sounds and dynamic gameplay that makes the game progressively challenging while implementing more operating systems concepts.
+
 ### Core Gameplay Loop  
 - Move your ship using the arrow keys  
 - Shoot bullets to take down aliens  
@@ -62,6 +64,8 @@ Each time you clear a wave of aliens, a new one spawns. The new wave might move 
 We’re keeping it simple for now—there isn’t a full storyline yet. The focus is on arcade-style gameplay. But in future versions, we might add a light narrative around defending Earth or surviving against an alien horde.
 
 ## OS Concepts Used
+
+OS concepts are still work in progress. We focused on completing the core gameplay mechanics themselves and are now working on integrating OS concepts within it. We currently have process creations and threading at the moment, with IPC, synchronization, and signals & timers on the way.
 
 ### 1. Process Creation  
 We're using Python’s `multiprocessing` module to handle the alien enemies each separate processes. This lets the main game run independently while the aliens are offloaded to child processes.
