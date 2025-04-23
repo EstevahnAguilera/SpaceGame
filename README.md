@@ -65,13 +65,13 @@ There isn’t an interactive storyline yet as the focus of the game is on arcade
 
 There was once a man named Bob.
 
-Adrift in the endless abyss of deep space, he was at peace after a life of endless conflict relaxing in his Arc280 Space Fighter. He was one of few surviving veterans of the Great Mars Incursion 60 years prior where an Alien Hegemony invaded the Solar System and nearly wiped out mankind. Just 20 years old at the time of the conflict, Bob joined the United Nations Space Core and quickly rose up the ranks to become the Grand Sea Lord of the UN Space Core and commanding a decisive battle that vanguished the Alien Hegemony. Bob was honored as a war hero and lives on as a living legend.
+Adrift in the endless abyss of deep space, he was at peace after a life of endless conflict relaxing in his Arc280 Space Fighter. He was one of few surviving veterans of the Great Mars Incursion 60 years prior where an Alien Hegemony invaded the Solar System and nearly wiped out mankind. Just 20 years old at the time of the conflict, Bob joined the United Nations Space Core and quickly rose up the ranks to become the Grand Sea Lord of the UN Space Core. As the chief naval commander for all humankind, he commanded a decisive battle that vanguished the Alien Hegemony. Bob was honored as a war hero and lives on as a living legend.
 
 Back on the Arc, Bob sipped on his coffee before it slipped out of his hand and shattered into thousands of pieces on the ground. As Bob gazed out of his ship, he once thought he'll never have to see war again, but here he is now 82 old seeing a endless horde of Alien spacecraft closing in fast.
 
-Bob sighs. His feable 80 year old frame almost creaks as he mounts the seat to his nearly obsolete and decommissioned Arc Space Fighter. 
+Bob sighs. At first, he is stunned, but as his feable 80 year old frame almost creaks as he mounts the seat to his nearly obsolete and decommissioned Arc Space Fighter. 
 
-Bob may be outnumbered, but as he is approached by thousands of Aliens ahead, he cracks his knuckles; he grins. He is about to cook these aliens like he once did.
+Bob may be outnumbered, but as he is approached by thousands of Aliens ahead, he cracks his knuckles; he grins. He was at peace but rather bored on the Arc, but now he'll once again be able to have some fun.
 
 
 ## OS Concepts Used
