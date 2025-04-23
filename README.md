@@ -1,10 +1,10 @@
 # Alien Invasion - Space Invaders Clone
 
 # Contributers
-Nathan Pader
-Raymond Lee
-Siba Filipovic
-Estevahn Aguilera
+- Nathan Pader
+- Raymond Lee
+- Siba Filipovic
+- Estevahn Aguilera
 
 ## Demo Video  
 [YouTube Demo Link](https://youtu.be/OggmmaCZkrM)
