@@ -19,7 +19,10 @@ To run the game, you’ll need:
 
 ### How to Run
 1. First, install the required dependencies:
-2. Then just run the game like this:
+   ```bash
+   pip install pygame
+   ```
+3. Then just run the game like this:
    ```bash
    python alien_invasion.py
    ```
