@@ -133,10 +133,21 @@ This demonstrates how different processes can work together in a coordinated man
 
    Example: In `os_game_utils.py`, the `save_high_score()` and `load_high_scores()` methods use file operations to store and retrieve high scores. These operations are protected by a mutex lock to prevent race conditions when multiple threads try to access the high score file simultaneously.
 
-4. **Shared Memory + Memory Management**
-   The game demonstrates efficient memory management through the use of shared memory segments and careful allocation of game objects. The C layer manages memory for game entities (aliens, bullets) while providing controlled access through well-defined interfaces.
-
-   Example #1: The `GlobalGameState` structure in `game_os.c` pre-allocates arrays for aliens and bullets, with fixed maximum sizes. This approach prevents memory fragmentation and provides predictable memory usage patterns.
+4. **Shared Memory**
+   - Used for thread communication within the same process
+      - The `GlobalGameState` structure holds all shared game state:
+      ```c
+      typedef struct {
+            GameState game_state;
+            Alien aliens[MAX_ALIENS];
+            Bullet bullets[100];
+            int num_aliens;
+            int num_bullets;
+            // ... other game state
+      } GlobalGameState;
+      ```
+      - Protected by mutex locks to ensure thread-safe access
+      - Allows the main thread (the Python process) and game logic thread to communicate through shared state
 
    Example #2:
    - When the game starts, the C layer creates a shared memory segment using `shmget()`
@@ -155,6 +166,32 @@ This demonstrates how different processes can work together in a coordinated man
          // Initialize mutex for thread safety
          pthread_mutex_init(&game_state->game_state.mutex, &attr);
      }
+     ```
+
+5. **Memory Management**
+   The game demonstrates several memory management concepts:
+
+   a) **Static Memory Allocation**
+   - Fixed-size arrays for game entities:
+     ```c
+     Alien aliens[MAX_ALIENS];  // Array for aliens
+     Bullet bullets[100];       // Array for bullets
+     ```
+   - This approach provides predictable memory usage and prevents fragmentation
+
+   b) **Dynamic Memory Management**
+   - Memory allocation and cleanup:
+     ```c
+     // Allocation
+     game_state = (GlobalGameState*)shmat(shm_id, NULL, 0);
+     
+     // Cleanup
+     shmdt(game_state);
+     shmctl(shm_id, IPC_RMID, NULL);
+     ```
+   - Memory initialization:
+     ```c
+     memset(game_state, 0, sizeof(GlobalGameState));
      ```
 
 ## What's Next  
