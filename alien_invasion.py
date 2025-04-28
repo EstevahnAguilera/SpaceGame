@@ -350,69 +350,6 @@ class AlienInvasion:
         """Update the positions of all aliens in the fleet."""
         self.aliens.update()
         
-        # Check for ship-alien collisions
-        if pygame.sprite.spritecollideany(self.ship, self.aliens):
-            # Set game state
-            self.stats.game_active = False
-            self.stats.game_over = True
-            self.stats.ships_left = 0
-            
-            # Save high score
-            if self.stats.score > 0:
-                self.game_os.save_high_score(self.stats.score)
-                self.high_scores = self.game_os.load_high_scores()
-            
-            # Clear everything
-            self.aliens.empty()
-            self.bullets.empty()
-            self.alien_bullets.empty()
-            
-            # Clear the screen
-            self.screen.fill(self.settings.bg_color)
-            
-            # Draw background
-            self.screen.blit(self.background, (0, 0))
-            
-            # Create a semi-transparent overlay
-            overlay = pygame.Surface((self.settings.screen_width, self.settings.screen_height), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 200))  # Semi-transparent black
-            self.screen.blit(overlay, (0, 0))
-            
-            # Draw game over message
-            font = pygame.font.SysFont(self.settings.ui_font, 64)
-            game_over_text = font.render("Game Over", True, self.settings.ui_highlight_color)
-            game_over_rect = game_over_text.get_rect()
-            game_over_rect.centerx = self.screen.get_rect().centerx
-            game_over_rect.top = 100
-            self.screen.blit(game_over_text, game_over_rect)
-            
-            # Draw final score
-            score_text = font.render(f"Final Score: {self.stats.score}", True, self.settings.ui_color)
-            score_rect = score_text.get_rect()
-            score_rect.centerx = self.screen.get_rect().centerx
-            score_rect.top = 200
-            self.screen.blit(score_text, score_rect)
-            
-            # Position and draw buttons
-            self.play_again_button.rect.centerx = self.screen.get_rect().centerx
-            self.play_again_button.rect.top = 300
-            self.play_again_button._prep_msg()
-            self.play_again_button.draw_button()
-            
-            self.high_scores_button.rect.centerx = self.screen.get_rect().centerx
-            self.high_scores_button.rect.top = 400
-            self.high_scores_button._prep_msg()
-            self.high_scores_button.draw_button()
-            
-            self.exit_button.rect.centerx = self.screen.get_rect().centerx
-            self.exit_button.rect.top = 500
-            self.exit_button._prep_msg()
-            self.exit_button.draw_button()
-            
-            # Force screen update
-            pygame.display.flip()
-            return
-
         # Handle alien shooting
         for alien in self.aliens.sprites():
             if alien.can_shoot() and len(self.alien_bullets) < self.settings.alien_bullets_allowed:
@@ -436,45 +373,9 @@ class AlienInvasion:
         for bullet in self.alien_bullets.copy():
             if bullet.rect.top >= self.settings.screen_height:
                 self.alien_bullets.remove(bullet)
-        
-        # Check for bullet-alien collisions
-        collisions = pygame.sprite.groupcollide(
-            self.bullets, self.aliens, True, True)
-        
-        # Handle collisions
-        if collisions:
-            for aliens in collisions.values():
-                self.stats.score += len(aliens) * 10
-                # Notify C code about the collision
-                for alien in aliens:
-                    self.game_os.handle_alien_hit(alien.rect.x, alien.rect.y)
-
-        # Check for alien bullet-ship collisions
-        if pygame.sprite.spritecollideany(self.ship, self.alien_bullets):
-            print("GAME OVER - Ship hit by alien bullet!")
-            self.stats.game_active = False
-            self.stats.game_over = True
-            self.stats.ships_left = 0
-            
-            # Save high score
-            if self.stats.score > 0:
-                print(f"Final score: {self.stats.score}")
-                self.game_os.save_high_score(self.stats.score)
-                self.high_scores = self.game_os.load_high_scores()
-            
-            # Clear everything
-            self.aliens.empty()
-            self.bullets.empty()
-            self.alien_bullets.empty()
-            
-            # Force game over screen
-            self.screen.blit(self.background, (0, 0))
-            self._draw_game_over_elements(self.screen)
-            pygame.display.flip()
-            pygame.time.wait(1000)  # Pause for a second to show game over
 
     def update_alien_bullets(self):
-        """Update the positions of all alien bullets and handle collisions."""
+        """Update the positions of all alien bullets."""
         # Update bullet positions
         self.alien_bullets.update()
         
@@ -482,21 +383,10 @@ class AlienInvasion:
         for bullet in self.alien_bullets.copy():
             if bullet.rect.top >= self.settings.screen_height:
                 self.alien_bullets.remove(bullet)
-        
-        # Check for bullet-ship collisions
-        if pygame.sprite.spritecollideany(self.ship, self.alien_bullets):
-            self.ship_hit()
 
     def check_bullet_alien_collisions(self):
-        """Respond to bullet-alien collisions."""
-        # Remove any bullets and aliens that have collided.
-        collisions = pygame.sprite.groupcollide(
-            self.bullets, self.aliens, True, True)
-            
-        if collisions:
-            for aliens in collisions.values():
-                self.stats.score += len(aliens) * 10  # Add 10 points per alien hit
-                print(f"Score: {self.stats.score}")  # Debug print
+        """This method is no longer needed as collisions are handled in C."""
+        pass
 
     def update_screen(self):
         """Update images on the screen, and flip to the new screen."""

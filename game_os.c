@@ -152,6 +152,47 @@ int init_game_state() {
     return 0;
 }
 
+// Collision detection functions
+static int check_collision(int x1, int y1, int x2, int y2, int radius) {
+    int dx = x1 - x2;
+    int dy = y1 - y2;
+    return (dx * dx + dy * dy) <= (radius * radius);
+}
+
+static void handle_collisions() {
+    // Check player bullet-alien collisions
+    for (int i = 0; i < game_state->num_bullets; i++) {
+        if (!game_state->bullets[i].active) continue;
+
+        if (game_state->bullets[i].is_player_bullet) {
+            // Check player bullet-alien collisions
+            for (int j = 0; j < game_state->num_aliens; j++) {
+                if (!game_state->aliens[j].active) continue;
+
+                if (check_collision(game_state->bullets[i].x, game_state->bullets[i].y,
+                                  game_state->aliens[j].x, game_state->aliens[j].y, 30)) {
+                    game_state->bullets[i].active = 0;
+                    game_state->aliens[j].active = 0;
+                    game_state->game_state.score += 10;
+                    break;
+                }
+            }
+        } else {
+            // Check alien bullet-player collisions
+            if (check_collision(game_state->bullets[i].x, game_state->bullets[i].y,
+                              game_state->game_state.player_x, game_state->game_state.player_y, 30)) {
+                game_state->bullets[i].active = 0;
+                game_state->game_state.player_health -= 10;
+                
+                if (game_state->game_state.player_health <= 0) {
+                    game_state->game_state.game_active = 0;
+                    game_state->game_state.game_over = 1;
+                }
+            }
+        }
+    }
+}
+
 // Game logic thread function
 void* game_logic_loop(void* arg) {
     while (thread_running) {
@@ -202,7 +243,7 @@ void* game_logic_loop(void* arg) {
                     if (game_state->bullets[i].is_player_bullet) {
                         game_state->bullets[i].y -= BULLET_SPEED;
                     } else {
-                        game_state->bullets[i].y += ALIEN_BULLET_SPEED;  // Use faster speed for alien bullets
+                        game_state->bullets[i].y += ALIEN_BULLET_SPEED;
                     }
 
                     // Remove bullets that are off screen
@@ -227,42 +268,13 @@ void* game_logic_loop(void* arg) {
             }
             game_state->num_bullets = active_bullets;
 
-            // Check collisions
-            for (int i = 0; i < game_state->num_bullets; i++) {
-                if (!game_state->bullets[i].active) continue;
+            // Handle all collisions
+            handle_collisions();
 
-                if (game_state->bullets[i].is_player_bullet) {
-                    // Check player bullet-alien collisions
-                    for (int j = 0; j < game_state->num_aliens; j++) {
-                        if (!game_state->aliens[j].active) continue;
-
-                        if (abs(game_state->bullets[i].x - game_state->aliens[j].x) < 30 &&
-                            abs(game_state->bullets[i].y - game_state->aliens[j].y) < 30) {
-                            game_state->bullets[i].active = 0;
-                            game_state->aliens[j].active = 0;
-                            game_state->game_state.score += 10;
-                            break;
-                        }
-                    }
-                } else {
-                    // Check alien bullet-player collisions
-                    if (abs(game_state->bullets[i].x - game_state->game_state.player_x) < 30 &&
-                        abs(game_state->bullets[i].y - game_state->game_state.player_y) < 30) {
-                        game_state->game_state.player_health -= 10;
-                        game_state->bullets[i].active = 0;
-                        
-                        if (game_state->game_state.player_health <= 0) {
-                            game_state->game_state.game_active = 0;
-                            game_state->game_state.game_over = 1;
-                        }
-                    }
-                }
-            }
-
-            // Random alien shooting - increased frequency
-            if (rand() % 100 < ALIEN_SHOOT_CHANCE) {  // Use constant
+            // Random alien shooting
+            if (rand() % 100 < ALIEN_SHOOT_CHANCE) {
                 for (int i = 0; i < game_state->num_aliens; i++) {
-                    if (game_state->aliens[i].active && rand() % ALIEN_SHOOT_DIVISOR == 0) {  // Use constant
+                    if (game_state->aliens[i].active && rand() % ALIEN_SHOOT_DIVISOR == 0) {
                         if (game_state->num_bullets < 100) {
                             game_state->bullets[game_state->num_bullets].x = game_state->aliens[i].x;
                             game_state->bullets[game_state->num_bullets].y = game_state->aliens[i].y;
