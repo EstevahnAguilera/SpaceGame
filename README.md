@@ -121,9 +121,27 @@ This demonstrates how different processes can work together in a coordinated man
 1. **Threading**
    The C implementation uses pthreads to handle concurrent operations. Multiple threads are used to manage different aspects of the game simultaneously, such as alien movement, collision detection, and game state updates.
 
-   Example: In `game_os.c`, separate threads are created to handle alien movement and game state updates, allowing these operations to run concurrently without blocking the main game loop.
+   There are three main threads that are being used in the program:
+   1. Main Game Thread (Python):
+      - The main thread running alien_invasion.py
+      - Handles pygame display, user input, and rendering
+      - Runs the main game loop in run_game()
+   2. Game Logic Thread (C):
+      - Created by pthread_create(&game_logic_thread, NULL, game_logic_loop, NULL)
+      - Handles game state updates, physics, collisions
+      - Runs at 60 FPS
+   3. Music Thread (Python):
+      - Created in GameOSUtils.start_music_thread():
+      - We do this Python since PyGame abstracts away the sound so we can focus on the core game logic using C.
 
-2. **Synchronization (Mutex)**
+   Example: In `game_os.c`, a game logic thread is created to handle game state updates, allowing these operations to run concurrently without blocking the main game thread that is running in Python.
+
+   Screenshot of pthread being created for the game logic loop:
+
+   <img width="385" alt="image" src="https://github.com/user-attachments/assets/64e7a82a-93ef-47da-9cfe-b3c2d94b9cbc" />
+
+
+3. **Synchronization (Mutex)**
    The game uses mutex locks to protect shared resources and prevent race conditions. The game state structure includes mutexes to ensure thread-safe access to critical data like player position, score, and game status.
 
    Example: The `GameState` structure in `game_os.c` includes a `pthread_mutex_t mutex` that protects critical sections when updating player position or game state. This ensures that only one thread can modify shared data at a time.
