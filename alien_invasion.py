@@ -79,7 +79,7 @@ class AlienInvasion:
         self.exit_button = Button(self, "Exit")
         
         # Load high scores
-        self.high_scores = self.os_utils.load_high_scores()
+        self.high_scores = self.game_os.load_high_scores()
         print("Current high scores:", self.high_scores)
         
         # Start background music in a separate thread
@@ -316,8 +316,8 @@ class AlienInvasion:
             # Save the score if it's a high score
             if self.stats.score > 0:
                 print(f"Game over! Final score: {self.stats.score}")
-                self.os_utils.save_high_score(self.stats.score)
-                self.high_scores = self.os_utils.load_high_scores()
+                self.game_os.save_high_score(self.stats.score)
+                self.high_scores = self.game_os.load_high_scores()
                 print("Updated high scores:", self.high_scores)
 
     def check_aliens_bottom(self):
@@ -337,8 +337,8 @@ class AlienInvasion:
             
             # Save high score
             if self.stats.score > 0:
-                self.os_utils.save_high_score(self.stats.score)
-                self.high_scores = self.os_utils.load_high_scores()
+                self.game_os.save_high_score(self.stats.score)
+                self.high_scores = self.game_os.load_high_scores()
             
             # Clear everything
             self.aliens.empty()
@@ -437,8 +437,8 @@ class AlienInvasion:
             # Save high score
             if self.stats.score > 0:
                 print(f"Final score: {self.stats.score}")
-                self.os_utils.save_high_score(self.stats.score)
-                self.high_scores = self.os_utils.load_high_scores()
+                self.game_os.save_high_score(self.stats.score)
+                self.high_scores = self.game_os.load_high_scores()
             
             # Clear everything
             self.aliens.empty()
@@ -684,8 +684,8 @@ class AlienInvasion:
         
         # Save high score if needed
         if self.stats.score > 0:
-            self.os_utils.save_high_score(self.stats.score)
-            self.high_scores = self.os_utils.load_high_scores()
+            self.game_os.save_high_score(self.stats.score)
+            self.high_scores = self.game_os.load_high_scores()
         
         # Clear all game elements
         self.aliens.empty()
