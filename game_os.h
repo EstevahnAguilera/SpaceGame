@@ -25,4 +25,8 @@ void get_bullet_positions(int* positions, int* count);
 // Cleanup resources
 void cleanup();
 
+// File management functions
+void save_high_score(int score);
+void load_high_scores(int* scores, int* count);
+
 #endif // GAME_OS_H 

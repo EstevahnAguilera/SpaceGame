@@ -19,6 +19,10 @@
 #define SCREEN_HEIGHT 800
 #define SHIP_SPEED 5
 
+// File management functions
+#define HIGH_SCORE_FILE "high_scores.json"
+#define MAX_HIGH_SCORES 10
+
 // Shared memory structure for game state
 typedef struct {
     int player_x;
@@ -67,6 +71,12 @@ static GlobalGameState* game_state = NULL;
 static int shm_id;
 static pthread_t game_logic_thread;
 static int thread_running = 0;
+
+// Structure for high scores
+typedef struct {
+    int scores[MAX_HIGH_SCORES];
+    int count;
+} HighScores;
 
 // Initialize shared memory and game state
 int init_game_state() {
@@ -334,6 +344,82 @@ void handle_alien_hit(int alien_x, int alien_y) {
     }
     
     pthread_mutex_unlock(&game_state->game_state.mutex);
+}
+
+// Save high score to file
+void save_high_score(int score) {
+    FILE* file = fopen(HIGH_SCORE_FILE, "r");
+    HighScores high_scores = {0};
+    
+    // Read existing scores if file exists
+    if (file) {
+        char buffer[1024];
+        size_t len = fread(buffer, 1, sizeof(buffer), file);
+        fclose(file);
+        
+        if (len > 0) {
+            buffer[len] = '\0';
+            char* token = strtok(buffer, "[], ");
+            while (token && high_scores.count < MAX_HIGH_SCORES) {
+                high_scores.scores[high_scores.count++] = atoi(token);
+                token = strtok(NULL, "[], ");
+            }
+        }
+    }
+    
+    // Add new score
+    if (high_scores.count < MAX_HIGH_SCORES) {
+        high_scores.scores[high_scores.count++] = score;
+    } else if (score > high_scores.scores[MAX_HIGH_SCORES - 1]) {
+        high_scores.scores[MAX_HIGH_SCORES - 1] = score;
+    }
+    
+    // Sort scores in descending order
+    for (int i = 0; i < high_scores.count - 1; i++) {
+        for (int j = i + 1; j < high_scores.count; j++) {
+            if (high_scores.scores[i] < high_scores.scores[j]) {
+                int temp = high_scores.scores[i];
+                high_scores.scores[i] = high_scores.scores[j];
+                high_scores.scores[j] = temp;
+            }
+        }
+    }
+    
+    // Write scores back to file
+    file = fopen(HIGH_SCORE_FILE, "w");
+    if (file) {
+        fprintf(file, "[");
+        for (int i = 0; i < high_scores.count; i++) {
+            fprintf(file, "%d", high_scores.scores[i]);
+            if (i < high_scores.count - 1) {
+                fprintf(file, ", ");
+            }
+        }
+        fprintf(file, "]");
+        fclose(file);
+    }
+}
+
+// Load high scores from file
+void load_high_scores(int* scores, int* count) {
+    FILE* file = fopen(HIGH_SCORE_FILE, "r");
+    *count = 0;
+    
+    if (file) {
+        char buffer[1024];
+        size_t len = fread(buffer, 1, sizeof(buffer), file);
+        fclose(file);
+        
+        if (len > 0) {
+            buffer[len] = '\0';
+            char* token = strtok(buffer, "[], ");
+            while (token && *count < MAX_HIGH_SCORES) {
+                scores[*count] = atoi(token);
+                (*count)++;
+                token = strtok(NULL, "[], ");
+            }
+        }
+    }
 }
 
 // Cleanup function

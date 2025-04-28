@@ -28,6 +28,10 @@ class GameOSWrapper:
         
         self.lib.cleanup.argtypes = []
         
+        # Add file management function prototypes
+        self.lib.save_high_score.argtypes = [c_int]
+        self.lib.load_high_scores.argtypes = [POINTER(c_int), POINTER(c_int)]
+        
         # Initialize game state
         if self.lib.init_game_state() != 0:
             raise RuntimeError("Failed to initialize game state")
@@ -95,4 +99,15 @@ class GameOSWrapper:
         return result
     
     def cleanup(self):
-        self.lib.cleanup() 
+        self.lib.cleanup()
+
+    def save_high_score(self, score):
+        """Save high score using C implementation"""
+        self.lib.save_high_score(score)
+
+    def load_high_scores(self):
+        """Load high scores using C implementation"""
+        scores = (c_int * 10)()  # Array of 10 integers
+        count = c_int()
+        self.lib.load_high_scores(scores, ctypes.byref(count))
+        return [scores[i] for i in range(count.value)] 
