@@ -68,29 +68,30 @@ class GameOSWrapper:
         }
     
     def get_alien_positions(self):
-        # Allocate array for positions (x,y pairs)
-        positions = (c_int * 100)()  # Max 50 aliens * 2 coordinates
-        count = c_int()
-        
+        """Get positions of all aliens from C"""
+        positions = (ctypes.c_int * (50 * 3))()  # MAX_ALIENS * 3 (x, y, active)
+        count = ctypes.c_int()
         self.lib.get_alien_positions(positions, ctypes.byref(count))
-        
-        # Convert to list of (x,y) tuples
         result = []
         for i in range(count.value):
-            result.append((positions[i * 2], positions[i * 2 + 1]))
+            x = positions[i * 3]
+            y = positions[i * 3 + 1]
+            active = positions[i * 3 + 2]
+            result.append((x, y, active))
         return result
     
     def get_bullet_positions(self):
-        # Allocate array for positions (x,y,is_player)
-        positions = (c_int * 300)()  # Max 100 bullets * 3 values
-        count = c_int()
-        
+        """Get positions of all bullets from C"""
+        positions = (ctypes.c_int * (100 * 4))()  # Max 100 bullets * 4 (x, y, is_player, active)
+        count = ctypes.c_int()
         self.lib.get_bullet_positions(positions, ctypes.byref(count))
-        
-        # Convert to list of (x,y,is_player) tuples
         result = []
         for i in range(count.value):
-            result.append((positions[i * 3], positions[i * 3 + 1], bool(positions[i * 3 + 2])))
+            x = positions[i * 4]
+            y = positions[i * 4 + 1]
+            is_player = positions[i * 4 + 2]
+            active = positions[i * 4 + 3]
+            result.append((x, y, is_player, active))
         return result
     
     def cleanup(self):

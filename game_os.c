@@ -289,8 +289,9 @@ void get_alien_positions(int* positions, int* count) {
     pthread_mutex_lock(&game_state->game_state.mutex);
     *count = game_state->num_aliens;
     for (int i = 0; i < game_state->num_aliens; i++) {
-        positions[i * 2] = game_state->aliens[i].x;
-        positions[i * 2 + 1] = game_state->aliens[i].y;
+        positions[i * 3] = game_state->aliens[i].x;
+        positions[i * 3 + 1] = game_state->aliens[i].y;
+        positions[i * 3 + 2] = game_state->aliens[i].active;
     }
     pthread_mutex_unlock(&game_state->game_state.mutex);
 }
@@ -300,10 +301,38 @@ void get_bullet_positions(int* positions, int* count) {
     pthread_mutex_lock(&game_state->game_state.mutex);
     *count = game_state->num_bullets;
     for (int i = 0; i < game_state->num_bullets; i++) {
-        positions[i * 3] = game_state->bullets[i].x;
-        positions[i * 3 + 1] = game_state->bullets[i].y;
-        positions[i * 3 + 2] = game_state->bullets[i].is_player_bullet;
+        positions[i * 4] = game_state->bullets[i].x;
+        positions[i * 4 + 1] = game_state->bullets[i].y;
+        positions[i * 4 + 2] = game_state->bullets[i].is_player_bullet;
+        positions[i * 4 + 3] = game_state->bullets[i].active;
     }
+    pthread_mutex_unlock(&game_state->game_state.mutex);
+}
+
+// Handle alien hit by bullet
+void handle_alien_hit(int alien_x, int alien_y) {
+    pthread_mutex_lock(&game_state->game_state.mutex);
+    
+    // Find and deactivate the alien
+    for (int i = 0; i < game_state->num_aliens; i++) {
+        if (game_state->aliens[i].active && 
+            abs(game_state->aliens[i].x - alien_x) < 30 &&
+            abs(game_state->aliens[i].y - alien_y) < 30) {
+            game_state->aliens[i].active = 0;
+            game_state->game_state.score += 10;
+            break;
+        }
+    }
+    
+    // Find and deactivate any bullets that hit this alien
+    for (int i = 0; i < game_state->num_bullets; i++) {
+        if (game_state->bullets[i].active && 
+            abs(game_state->bullets[i].x - alien_x) < 30 &&
+            abs(game_state->bullets[i].y - alien_y) < 30) {
+            game_state->bullets[i].active = 0;
+        }
+    }
+    
     pthread_mutex_unlock(&game_state->game_state.mutex);
 }
 

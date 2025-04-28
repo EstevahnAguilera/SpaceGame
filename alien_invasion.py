@@ -423,6 +423,9 @@ class AlienInvasion:
         if collisions:
             for aliens in collisions.values():
                 self.stats.score += len(aliens) * 10
+                # Notify C code about the collision
+                for alien in aliens:
+                    self.game_os.handle_alien_hit(alien.rect.x, alien.rect.y)
 
         # Check for alien bullet-ship collisions
         if pygame.sprite.spritecollideany(self.ship, self.alien_bullets):
@@ -488,25 +491,27 @@ class AlienInvasion:
             self.ship.blitme()
             
             # Draw aliens
-            for x, y in alien_positions:
-                alien = Alien(self)
-                alien.rect.x = x
-                alien.rect.y = y
-                self.screen.blit(alien.image, alien.rect)
+            for x, y, active in alien_positions:
+                if active:  # Only draw active aliens
+                    alien = Alien(self)
+                    alien.rect.x = x
+                    alien.rect.y = y
+                    self.screen.blit(alien.image, alien.rect)
             
             # Draw bullets
-            for x, y, is_player in bullet_positions:
-                if is_player:
-                    bullet = Bullet(self)
-                else:
-                    # Create a temporary alien for the bullet
-                    temp_alien = Alien(self)
-                    temp_alien.rect.x = x
-                    temp_alien.rect.y = y
-                    bullet = AlienBullet(self, temp_alien)
-                bullet.rect.x = x
-                bullet.rect.y = y
-                self.screen.blit(bullet.image, bullet.rect)
+            for x, y, is_player, active in bullet_positions:
+                if active:  # Only draw active bullets
+                    if is_player:
+                        bullet = Bullet(self)
+                    else:
+                        # Create a temporary alien for the bullet
+                        temp_alien = Alien(self)
+                        temp_alien.rect.x = x
+                        temp_alien.rect.y = y
+                        bullet = AlienBullet(self, temp_alien)
+                    bullet.rect.x = x
+                    bullet.rect.y = y
+                    self.screen.blit(bullet.image, bullet.rect)
             
             # Draw score
             self._draw_score()
