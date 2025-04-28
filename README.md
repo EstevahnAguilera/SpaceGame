@@ -119,7 +119,20 @@ This demonstrates how different processes can work together in a coordinated man
 - C: Core game logic and state management
 
 1. **Process Management**
+   The game uses a hybrid architecture where process management is handled in C through shared memory and threads. Here's how it works:
 
+   - The main game process (Python/PyGame) handles:
+     - Graphics rendering
+     - User input capture
+     - Sound effects
+   - The C layer process handles:
+     - Game logic and physics
+     - Collision detection
+     - State updates
+   - Communication between processes:
+     - Python sends input events to C through `GameOSWrapper`
+     - C updates game state in shared memory
+     - Python reads updated state and renders it
 
 2. **Inter-Process Communication (IPC)**
    The game implements IPC through shared memory and function calls between Python and C. The Python layer communicates game events (like player movement and firing) to the C layer, which processes these events and updates the game state.
@@ -144,7 +157,26 @@ This demonstrates how different processes can work together in a coordinated man
 6. **Memory Management**
    The game demonstrates efficient memory management through the use of shared memory segments and careful allocation of game objects. The C layer manages memory for game entities (aliens, bullets) while providing controlled access through well-defined interfaces.
 
-   Example: The `GlobalGameState` structure in `game_os.c` pre-allocates arrays for aliens and bullets, with fixed maximum sizes. This approach prevents memory fragmentation and provides predictable memory usage patterns.
+   Example #1: The `GlobalGameState` structure in `game_os.c` pre-allocates arrays for aliens and bullets, with fixed maximum sizes. This approach prevents memory fragmentation and provides predictable memory usage patterns.
+
+   Example #2:
+   - When the game starts, the C layer creates a shared memory segment using `shmget()`
+   - This shared memory segment (`GlobalGameState`) holds all game state including:
+     - Player position and health
+     - Alien positions and states
+     - Bullet positions and states
+     - Game status (active/over)
+   - Example from `game_os.c`:
+     ```c
+     int init_game_state() {
+         // Create shared memory segment
+         shm_id = shmget(IPC_PRIVATE, sizeof(GlobalGameState), IPC_CREAT | 0666);
+         // Attach shared memory
+         game_state = (GlobalGameState*)shmat(shm_id, NULL, 0);
+         // Initialize mutex for thread safety
+         pthread_mutex_init(&game_state->game_state.mutex, &attr);
+     }
+     ```
 
 ## What's Next  
 Here's what we're planning to add before the final version:
