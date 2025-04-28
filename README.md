@@ -118,43 +118,22 @@ This demonstrates how different processes can work together in a coordinated man
 - Python: Event handling and C interface
 - C: Core game logic and state management
 
-1. **Process Management**
-   The game uses a hybrid architecture where process management is handled in C through shared memory and threads. Here's how it works:
-
-   - The main game process (Python/PyGame) handles:
-     - Graphics rendering
-     - User input capture
-     - Sound effects
-   - The C layer process handles:
-     - Game logic and physics
-     - Collision detection
-     - State updates
-   - Communication between processes:
-     - Python sends input events to C through `GameOSWrapper`
-     - C updates game state in shared memory
-     - Python reads updated state and renders it
-
-2. **Inter-Process Communication (IPC)**
-   The game implements IPC through shared memory and function calls between Python and C. The Python layer communicates game events (like player movement and firing) to the C layer, which processes these events and updates the game state.
-
-   Example: The `GameOSWrapper` class provides methods like `update_player_movement()` and `fire_player_bullet()` that call corresponding C functions. These functions update the shared game state, allowing the two layers to communicate effectively.
-
-3. **Threading**
+1. **Threading**
    The C implementation uses pthreads to handle concurrent operations. Multiple threads are used to manage different aspects of the game simultaneously, such as alien movement, collision detection, and game state updates.
 
    Example: In `game_os.c`, separate threads are created to handle alien movement and game state updates, allowing these operations to run concurrently without blocking the main game loop.
 
-4. **Synchronization (Mutex)**
+2. **Synchronization (Mutex)**
    The game uses mutex locks to protect shared resources and prevent race conditions. The game state structure includes mutexes to ensure thread-safe access to critical data like player position, score, and game status.
 
    Example: The `GameState` structure in `game_os.c` includes a `pthread_mutex_t mutex` that protects critical sections when updating player position or game state. This ensures that only one thread can modify shared data at a time.
 
-5. **File Management**
+3. **File Management**
    The game implements file operations for persistent storage of high scores. The Python layer handles file I/O operations with proper error handling and synchronization to ensure data consistency.
 
    Example: In `os_game_utils.py`, the `save_high_score()` and `load_high_scores()` methods use file operations to store and retrieve high scores. These operations are protected by a mutex lock to prevent race conditions when multiple threads try to access the high score file simultaneously.
 
-6. **Memory Management**
+4. **Shared Memory + Memory Management**
    The game demonstrates efficient memory management through the use of shared memory segments and careful allocation of game objects. The C layer manages memory for game entities (aliens, bullets) while providing controlled access through well-defined interfaces.
 
    Example #1: The `GlobalGameState` structure in `game_os.c` pre-allocates arrays for aliens and bullets, with fixed maximum sizes. This approach prevents memory fragmentation and provides predictable memory usage patterns.
