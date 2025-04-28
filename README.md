@@ -33,9 +33,14 @@
    # Using the provided Makefile
    make
    ```
+   or if one already exists
+   ```
+   make clean && make
+   ```
+
    This will compile `game_os.c` into a shared library `libgame_os.so` that the Python game uses.
 
-4. Run the game:
+5. Run the game:
    ```bash
    python alien_invasion.py
    ```
