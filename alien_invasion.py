@@ -261,6 +261,11 @@ class AlienInvasion:
 
     def _draw_high_scores(self):
         """Draw the high scores screen."""
+        # Create a semi-transparent overlay
+        overlay = pygame.Surface((self.settings.screen_width, self.settings.screen_height), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 200))  # Semi-transparent black
+        self.screen.blit(overlay, (0, 0))
+        
         # Draw title
         font = pygame.font.SysFont(self.settings.ui_font, 64)
         title = font.render("High Scores", True, self.settings.ui_highlight_color)
@@ -271,12 +276,29 @@ class AlienInvasion:
         
         # Draw high scores
         font = pygame.font.SysFont(self.settings.ui_font, 48)
-        for i, score in enumerate(self.high_scores[:10]):  # Show top 10 scores
-            score_text = font.render(f"{i+1}. {score}", True, self.settings.ui_color)
-            score_rect = score_text.get_rect()
-            score_rect.centerx = self.screen.get_rect().centerx
-            score_rect.top = 200 + i * 50
-            self.screen.blit(score_text, score_rect)
+        try:
+            # Ensure high scores are loaded
+            if not hasattr(self, 'high_scores') or self.high_scores is None:
+                self.high_scores = self.game_os.load_high_scores()
+            
+            # Sort scores in descending order
+            sorted_scores = sorted(self.high_scores, reverse=True)
+            
+            # Display up to 10 scores
+            for i, score in enumerate(sorted_scores[:10]):
+                score_text = font.render(f"{i+1}. {score}", True, self.settings.ui_color)
+                score_rect = score_text.get_rect()
+                score_rect.centerx = self.screen.get_rect().centerx
+                score_rect.top = 200 + i * 50
+                self.screen.blit(score_text, score_rect)
+        except Exception as e:
+            # If there's an error, display a message
+            error_text = font.render("Error loading high scores", True, self.settings.ui_color)
+            error_rect = error_text.get_rect()
+            error_rect.centerx = self.screen.get_rect().centerx
+            error_rect.top = 200
+            self.screen.blit(error_text, error_rect)
+            print(f"Error loading high scores: {e}")
         
         # Draw back button
         self.back_button.rect.centerx = self.screen.get_rect().centerx
@@ -394,7 +416,9 @@ class AlienInvasion:
         self.star_field.update()
         self.star_field.draw()
         
-        if self.stats.game_active:
+        if self.showing_high_scores:
+            self._draw_high_scores()
+        elif self.stats.game_active:
             # Get positions from C
             alien_positions = self.game_os.get_alien_positions()
             bullet_positions = self.game_os.get_bullet_positions()
