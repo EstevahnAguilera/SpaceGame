@@ -170,7 +170,7 @@ This demonstrates how different processes can work together in a coordinated man
 
 5. **Memory Management**
    The game demonstrates several memory management concepts:
-
+   
    a) **Static Memory Allocation**
    - Fixed-size arrays for game entities:
      ```c
@@ -184,11 +184,12 @@ This demonstrates how different processes can work together in a coordinated man
      ```c
      // Allocation
      game_state = (GlobalGameState*)shmat(shm_id, NULL, 0);
-     
-     // Cleanup
-     shmdt(game_state);
-     shmctl(shm_id, IPC_RMID, NULL);
      ```
+<img width="442" alt="image" src="https://github.com/user-attachments/assets/87df41a9-4868-4310-8819-2b5be716b3c3" />
+
+   - Cleanup of the shared memory
+<img width="378" alt="image" src="https://github.com/user-attachments/assets/56e975af-ddab-4e96-8332-a3f16aad7aa9" />
+
    - Memory initialization:
      ```c
      memset(game_state, 0, sizeof(GlobalGameState));
