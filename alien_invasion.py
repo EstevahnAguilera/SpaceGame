@@ -513,8 +513,9 @@ class AlienInvasion:
                     bullet.rect.y = y
                     self.screen.blit(bullet.image, bullet.rect)
             
-            # Draw score
+            # Draw score and health
             self._draw_score()
+            self._draw_health_bar()
         elif self.stats.game_over:
             self._draw_game_over_elements(self.screen)
         else:
@@ -530,7 +531,7 @@ class AlienInvasion:
             
         # Create a semi-transparent background for the score
         score_rect = pygame.Rect(0, 0, 200, 100)
-        score_rect.right = self.screen.get_rect().right - 20
+        score_rect.centerx = self.screen.get_rect().centerx
         score_rect.top = 20
         score_surface = pygame.Surface((score_rect.width, score_rect.height), pygame.SRCALPHA)
         score_surface.fill(self.settings.ui_background_color)
@@ -543,7 +544,7 @@ class AlienInvasion:
         score_str = f"Score: {self.stats.score}"
         score_image = font.render(score_str, True, self.settings.ui_color)
         score_rect = score_image.get_rect()
-        score_rect.right = self.screen.get_rect().right - 20
+        score_rect.centerx = self.screen.get_rect().centerx
         score_rect.top = 20
         self.screen.blit(score_image, score_rect)
         
@@ -551,9 +552,57 @@ class AlienInvasion:
         level_str = f"Level: {self.stats.level}"
         level_image = font.render(level_str, True, self.settings.ui_color)
         level_rect = level_image.get_rect()
-        level_rect.right = self.screen.get_rect().right - 20
+        level_rect.centerx = self.screen.get_rect().centerx
         level_rect.top = 60
         self.screen.blit(level_image, level_rect)
+
+    def _draw_health_bar(self):
+        """Draw the health bar at the top right of the screen."""
+        if self.stats.game_over:
+            return
+
+        # Get current health from game state
+        game_state = self.game_os.get_game_state()
+        current_health = game_state['player_health']
+        max_health = 100  # Maximum health value
+
+        # Health bar dimensions and position
+        bar_width = 150  # Made more compact
+        bar_height = 15  # Made more compact
+        bar_x = self.settings.screen_width - bar_width - 20  # 20 pixels from right edge
+        bar_y = 20  # 20 pixels from top
+
+        # Create a semi-transparent background for the health bar
+        health_rect = pygame.Rect(bar_x - 5, bar_y - 5, bar_width + 10, bar_height + 10)
+        health_surface = pygame.Surface((health_rect.width, health_rect.height), pygame.SRCALPHA)
+        health_surface.fill(self.settings.ui_background_color)
+        self.screen.blit(health_surface, health_rect)
+
+        # Draw background (empty health bar)
+        pygame.draw.rect(self.screen, (50, 50, 50), (bar_x, bar_y, bar_width, bar_height))
+        
+        # Calculate current health width
+        health_width = (current_health / max_health) * bar_width
+        
+        # Draw health bar with color based on health percentage
+        health_percentage = current_health / max_health
+        if health_percentage > 0.6:
+            color = (0, 255, 0)  # Green
+        elif health_percentage > 0.3:
+            color = (255, 255, 0)  # Yellow
+        else:
+            color = (255, 0, 0)  # Red
+            
+        pygame.draw.rect(self.screen, color, (bar_x, bar_y, health_width, bar_height))
+
+        # Draw health text
+        font = pygame.font.SysFont(self.settings.ui_font, self.settings.ui_font_size)
+        health_text = f"HP: {current_health}/{max_health}"
+        text_image = font.render(health_text, True, self.settings.ui_color)
+        text_rect = text_image.get_rect()
+        text_rect.right = bar_x + bar_width
+        text_rect.top = bar_y + bar_height + 5
+        self.screen.blit(text_image, text_rect)
 
     def _draw_game_over_elements(self, surface):
         """Draw game over elements on the given surface."""
