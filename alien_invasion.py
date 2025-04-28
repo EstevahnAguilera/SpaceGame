@@ -33,6 +33,9 @@ class AlienInvasion:
         self.os_utils = GameOSUtils()
         self.game_os = GameOSWrapper()  # Initialize OS wrapper
 
+        # Show cursor by default
+        pygame.mouse.set_visible(True)
+
         self.screen = pygame.display.set_mode((self.settings.screen_width, self.settings.screen_height))
 
         #If you want to play in full screen:
@@ -209,25 +212,32 @@ class AlienInvasion:
             self.game_os = GameOSWrapper()
             self.game_os.start_game()
             
-            pygame.mouse.set_visible(False)
+            # Hide cursor only when game is active
+            if self.stats.game_active:
+                pygame.mouse.set_visible(False)
 
     def _check_play_again_button(self, mouse_pos):
         """Start a new game when the player clicks Play Again."""
         button_clicked = self.play_again_button.rect.collidepoint(mouse_pos)
         if button_clicked and self.stats.game_over:
+            self.stats.game_over = False
+            self.stats.game_active = True
             self.game_os.start_game()
+            pygame.mouse.set_visible(False)  # Hide cursor when starting new game
 
     def _check_high_scores_button(self, mouse_pos):
         """Show high scores when the player clicks High Scores."""
         button_clicked = self.high_scores_button.rect.collidepoint(mouse_pos)
         if button_clicked and (self.stats.game_over or not self.stats.game_active):
             self.showing_high_scores = True
+            pygame.mouse.set_visible(True)  # Show cursor in high scores screen
 
     def _check_back_button(self, mouse_pos):
         """Return to previous screen when the player clicks Back."""
         button_clicked = self.back_button.rect.collidepoint(mouse_pos)
         if button_clicked and self.showing_high_scores:
             self.showing_high_scores = False
+            pygame.mouse.set_visible(True)  # Show cursor when returning to menu
 
     def _check_exit_button(self, mouse_pos):
         """Exit the game when the player clicks Exit."""
@@ -418,6 +428,7 @@ class AlienInvasion:
         
         if self.showing_high_scores:
             self._draw_high_scores()
+            pygame.mouse.set_visible(True)  # Ensure cursor is visible in high scores
         elif self.stats.game_active:
             # Get positions from C
             alien_positions = self.game_os.get_alien_positions()
@@ -452,10 +463,13 @@ class AlienInvasion:
             # Draw score and health
             self._draw_score()
             self._draw_health_bar()
+            pygame.mouse.set_visible(False)  # Ensure cursor is hidden during gameplay
         elif self.stats.game_over:
             self._draw_game_over_elements(self.screen)
+            pygame.mouse.set_visible(True)  # Ensure cursor is visible in game over screen
         else:
             self._draw_start_screen()
+            pygame.mouse.set_visible(True)  # Ensure cursor is visible in start screen
         
         pygame.display.flip()
 
@@ -617,6 +631,9 @@ class AlienInvasion:
         self.stats.game_active = False
         self.stats.game_over = True
         self.stats.ships_left = 0
+        
+        # Show cursor when game is over
+        pygame.mouse.set_visible(True)
         
         # Save high score if needed
         if self.stats.score > 0:
