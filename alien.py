@@ -13,13 +13,16 @@ class Alien(Sprite):
         self.screen = ai_game.screen
         self.settings = ai_game.settings
         self.stats = ai_game.stats
-        self.ship = ai_game.ship  # Reference to the ship for targeting
-
-        #Load the alien image and set its starting position
-        original_image = pygame.image.load('images/alien2.png')
-        self.image = pygame.transform.scale(original_image, (75, 50))
         
-        # self.image = pygame.image.load('SpaceGame/images/alien2.png')
+        # Load the alien image and set its starting position
+        try:
+            original_image = pygame.image.load('images/alien2.png')
+            self.image = pygame.transform.scale(original_image, (75, 50))
+        except:
+            # Fallback to a colored rectangle if image loading fails
+            self.image = pygame.Surface((75, 50))
+            self.image.fill(self.settings.alien_color)
+        
         self.rect = self.image.get_rect()
 
         #This will start a new alien near the top left of the screen.
@@ -38,21 +41,27 @@ class Alien(Sprite):
         base_speed_x = random.uniform(0.4, 0.7) * self.settings.alien_speed
         base_speed_y = random.uniform(0.3, 0.5) * self.settings.alien_speed
         
-        # Apply difficulty multiplier
-        self.speed_x = base_speed_x * self.stats.difficulty_multiplier
-        self.speed_y = base_speed_y * self.stats.difficulty_multiplier
+        # Calculate speed based on level
+        self._calculate_speed()
 
         #Shooting behavior
         self.last_shot = 0
-        # Reduce shoot delay as difficulty increases
+        # Reduce shoot delay as level increases
         base_delay = random.randint(800, 2000)
-        self.shoot_delay = int(base_delay / self.stats.difficulty_multiplier)
+        self.shoot_delay = int(base_delay / (1.0 + (self.stats.level - 1) * 0.1))
 
         # Movement pattern variables
         self.movement_timer = 0
         self.movement_change_interval = random.randint(1000, 3000)  # Change direction every 1-3 seconds
         self.target_direction = None
         self.last_direction_change = pygame.time.get_ticks()
+
+    def _calculate_speed(self):
+        """Calculate alien speed based on current level."""
+        base_speed = self.settings.alien_speed
+        level_multiplier = 1.0 + (self.stats.level - 1) * 0.1  # 10% increase per level
+        self.speed_x = base_speed * level_multiplier
+        self.speed_y = base_speed * level_multiplier
 
     def check_edges(self):
         #This will make aliens bounce off the edges of the screen and stay in upper portion
@@ -93,8 +102,7 @@ class Alien(Sprite):
             
             # Random chance to adjust speed
             if random.random() < 0.2:  # 20% chance to adjust speed
-                self.speed_x = random.uniform(0.4, 0.7) * self.settings.alien_speed * self.stats.difficulty_multiplier
-                self.speed_y = random.uniform(0.3, 0.5) * self.settings.alien_speed * self.stats.difficulty_multiplier
+                self._calculate_speed()
         
         #Update horizontal position
         self.x += self.speed_x * self.direction_x
@@ -105,14 +113,13 @@ class Alien(Sprite):
         self.rect.y = self.y
 
     def can_shoot(self):
-        """Check if the alien can shoot based on time delay and position."""
+        """Check if the alien can shoot based on time delay."""
         current_time = pygame.time.get_ticks()
         if current_time - self.last_shot > self.shoot_delay:
-            # Only shoot if the alien is above the ship
-            if self.rect.bottom < self.ship.rect.top:
-                self.last_shot = current_time
-                # Update shoot delay based on current difficulty
-                base_delay = random.randint(800, 2000)
-                self.shoot_delay = int(base_delay / self.stats.difficulty_multiplier)
-                return True
+            self.last_shot = current_time
+            # Update shoot delay based on current level
+            base_delay = random.randint(800, 2000)
+            level_multiplier = 1.0 + (self.stats.level - 1) * 0.1
+            self.shoot_delay = int(base_delay / level_multiplier)
+            return True
         return False

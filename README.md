@@ -9,23 +9,46 @@
 ## Demo Video  
 [YouTube Demo Link](https://youtu.be/OggmmaCZkrM)
 
-## Setup
+## Installation and Setup
 
-### Requirements
-To run the game, you’ll need:
-- Python 3.8 or higher
-- The `pygame` library (we also use `multiprocessing` and `threading`)
-- It should work on most platforms including Windows, macOS, or Linux
-
-### How to Run
-1. First, install the required dependencies:
+1. First, create and activate a Python virtual environment:
    ```bash
-   pip install pygame
+   # Create virtual environment
+   python -m venv venv
+
+   # Activate virtual environment
+   # On macOS/Linux:
+   source venv/bin/activate
+   # On Windows:
+   # .\venv\Scripts\activate
    ```
-3. Then just run the game like this:
+
+2. Install the required Python dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Compile the C code:
+   ```bash
+   # Using the provided Makefile
+   make
+   ```
+   or if one already exists
+   ```
+   make clean && make
+   ```
+
+   This will compile `game_os.c` into a shared library `libgame_os.so` that the Python game uses.
+
+5. Run the game:
    ```bash
    python alien_invasion.py
    ```
+
+## Notes
+- Make sure you have Python 3.x installed
+- The C code compilation requires gcc to be installed
+- The game requires the compiled `libgame_os.so` to run properly
 
 ## Game Overview
 
@@ -33,7 +56,7 @@ To run the game, you’ll need:
 Alien Invasion
 
 ### Game Summary  
-Alien Invasion is a simple top-down arcade shooter inspired by the classic *Space Invaders*. You control a spaceship that slides left and right along the bottom of the screen. Your job is to shoot down waves of aliens before they reach you. If you destroy them all, the game starts a new wave and keeps going. It’s fast, fun, and we’re using it as a creative way to explore operating system concepts through gameplay.
+Alien Invasion is a simple top-down arcade shooter inspired by the classic *Space Invaders*. You control a spaceship that slides left and right along the bottom of the screen. Your job is to shoot down waves of aliens before they reach you. If you destroy them all, the game starts a new wave and keeps going. It's fast, fun, and we're using it as a creative way to explore operating system concepts through gameplay.
 
 As of now, the game is work in progress. We hope to implement a fun user experience with sounds and dynamic gameplay that makes the game progressively challenging while implementing more operating systems concepts.
 
@@ -64,7 +87,7 @@ Each time you clear a wave of aliens, a new one spawns. The new wave might move 
 - You lose if any alien reaches the bottom or crashes into your ship  
 
 ## Story and Narrative  
-There isn’t an interactive storyline yet as the focus of the game is on arcade-style gameplay.
+There isn't an interactive storyline yet as the focus of the game is on arcade-style gameplay. Here is the backstory though:
 
 There was once a man named Bob.
 
@@ -79,38 +102,133 @@ Bob may be outnumbered, but as he is approached by thousands of Aliens ahead, he
 
 ## OS Concepts Used
 
-OS concepts are still work in progress. We focused on completing the core gameplay mechanics themselves and are now working on integrating OS concepts within it. We currently have process creations and threading at the moment, with IPC, synchronization, and signals & timers on the way.
+The game implements a hybrid architecture where PyGame and Python handle the graphics rendering and input processing, while the core game logic is implemented in C. This implementation allows us to demonstrate several key operating system concepts while abstracting complicated graphics to PyGame. Here's how the system works:
 
-### 1. Process Creation  
-We're using Python’s `multiprocessing` module to handle the alien enemies each separate processes. This lets the main game run independently while the aliens are offloaded to child processes.
+The game uses a hybrid architecture where Python and C work together in a coordinated pipeline:
+- PyGame captures user input (keyboard/mouse events)
+- Python processes these events and calls the appropriate C functions through the `GameOSWrapper` interface
+- The C layer computes new positions and game state based on the input
+- The updated state is sent back to Python
+- PyGame renders the new positions and game state
 
-Here is an image to the code snippet within os_game_utils.py where processes are used:
-<img width="831" alt="image" src="https://github.com/user-attachments/assets/2661724c-abbd-4456-bd90-f01b2743da62" />
+Example: When a player presses the left arrow key:
+1. PyGame detects the key press event
+2. Python's `GameOSWrapper` calls `update_player_movement(1, 0, 0, 0)` to signal left movement
+3. The C layer (`game_os.c`) updates the player's position in shared memory
+4. Python retrieves the new position through `get_game_state()`
+5. PyGame renders the ship at the new position
 
-### 2. Threading  
-Threads help the game stay smooth by running several things at once—like reading player input, checking for collisions, and playing background music. That way, the game doesn’t freeze when doing something heavy.
+This demonstrates how different processes can work together in a coordinated manner, with each layer handling specific responsibilities:
+- PyGame: Input capture and graphics rendering
+- Python: Event handling and C interface
+- C: Core game logic and state management
 
-Here is an image to the code snippet within os_game_utils.py where threads are used:
-<img width="622" alt="image" src="https://github.com/user-attachments/assets/7de76f6c-fe65-4406-874c-b3e1c5569098" />
+1. **Threading**
+   The C implementation uses pthreads to handle concurrent operations. Multiple threads are used to manage different aspects of the game simultaneously, such as alien movement, collision detection, and game state updates.
+
+   There are three main threads that are being used in the program:
+   1. Main Game Thread (Python):
+      - The main thread running alien_invasion.py
+      - Handles pygame display, user input, and rendering
+      - Runs the main game loop in run_game()
+   2. Game Logic Thread (C):
+      - Created by pthread_create(&game_logic_thread, NULL, game_logic_loop, NULL)
+      - Handles game state updates, physics, collisions
+      - Runs at 60 FPS
+   3. Music Thread (Python):
+      - Created in GameOSUtils.start_music_thread():
+      - We do this Python since PyGame abstracts away the sound so we can focus on the core game logic using C.
+
+   Example: In `game_os.c`, a game logic thread is created to handle game state updates, allowing these operations to run concurrently without blocking the main game thread that is running in Python.
+
+   Screenshot of pthread being created for the game logic loop:
+
+   <img width="385" alt="image" src="https://github.com/user-attachments/assets/64e7a82a-93ef-47da-9cfe-b3c2d94b9cbc" />
 
 
-### 3. Inter-process Communication (IPC)  
-We plan to use shared memory and message passing between the main game process and the alien wave processes. This will allow us to send commands like when to spawn new enemies, change direction, or increase speed. It will demonstrate how separate processes in an operating system can communicate without interfering with each other.
+3. **Synchronization (Mutex)**
+   The game uses mutex locks to protect shared resources and prevent race conditions. The game state structure includes mutexes to ensure thread-safe access to critical data like player position, score, and game status.
 
-Work in Progress: We plan on further iterating upon our code until IPC is added. We wanted to focus on the core gameplay before we added IPC.
+   Example: The `GameState` structure in `game_os.c` includes a `pthread_mutex_t mutex` that protects critical sections when updating player position or game state. This ensures that only one thread can modify shared data at a time.
 
-### 4. Synchronization  
-We’re planning to implement synchronization tools like locks and semaphores to manage access to shared resources—such as power-ups and the high score file. The goal is to prevent race conditions when two parts of the game (like the player and an alien) try to access or modify the same resource at the same time.
+   Screenshot of several functions making use of Mutex for protection:
 
-Work in Progress: We plan on further iterating upon our code until synchronization is added. We wanted to focus on the core gameplay before we added synchronization.
+   <img width="417" alt="image" src="https://github.com/user-attachments/assets/98e54725-c3c4-4c75-a619-31b31e267405" />
 
-### 5. Signals and Timers  
-We intend to use signal handling and timers to manage bullet events—like automatically removing bullets after a certain time or when they go off-screen. This is similar to how operating systems use signals and timers to manage timed tasks and alert processes when events occur.
 
-Work in Progress: We plan on further iterating upon our code until signals and timers are added. We wanted to focus on the core gameplay before we added signals and timers.
+4. **File Management**
+   The game implements file operations for persistent storage of high scores. The Python layer handles file I/O operations with proper error handling and synchronization to ensure data consistency.
 
-## What’s Next  
-Here’s what we’re planning to add before the final version:
+   Example: In `os_game_utils.py`, the `save_high_score()` and `load_high_scores()` methods use file operations to store and retrieve high scores. These operations are protected by a mutex lock to prevent race conditions when multiple threads try to access the high score file simultaneously.
+
+   Screenshot of `save_high_score()` and its use of file management:
+   
+   <img width="351" alt="image" src="https://github.com/user-attachments/assets/eaafc8e6-901c-4e61-ba60-35b3de80660c" />
+
+
+6. **Shared Memory**
+   - Used for thread communication within the same process. In this case, the shared memory is so that the Python main thread can access the memory created by the game logic thread in C.
+   
+   - Basically, whenever a user enters input, PyGame and Python capture the users input then sends it via the shared memory segement called `game_state` to the core game logic thread running in C. C does its computations and updates the variables stored within this `game_state` shared memory segment. PyGame and Python then read the variables in the `game_state` shared memory segment and update the graphics to reflect the changes in positions that the threads in C calculated previously.
+  
+      - The `GlobalGameState` structure holds all shared game state:
+      ```c
+      typedef struct {
+            GameState game_state;
+            Alien aliens[MAX_ALIENS];
+            Bullet bullets[100];
+            int num_aliens;
+            int num_bullets;
+            // ... other game state
+      } GlobalGameState;
+      ```
+      - Protected by mutex locks to ensure thread-safe access
+      - Allows the main thread (the Python process) and game logic thread to communicate through shared state
+
+   Example #2:
+   - When the game starts, the C layer creates a shared memory segment using `shmget()`
+   - This shared memory segment (`GlobalGameState`) holds all game state including:
+     - Player position and health
+     - Alien positions and states
+     - Bullet positions and states
+     - Game status (active/over)
+   - Screenshot proof of shared memory being used within the game:
+
+     <img width="365" alt="image" src="https://github.com/user-attachments/assets/b096adf8-f9f1-4683-9025-16fce67d3c6c" />
+
+
+7. **Memory Management**
+   The game demonstrates several memory management concepts:
+   
+   a) **Static Memory Allocation**
+   - Fixed-size arrays for game entities:
+     ```c
+     Alien aliens[MAX_ALIENS];  // Array for aliens
+     Bullet bullets[100];       // Array for bullets
+     ```
+   - This approach provides predictable memory usage and prevents fragmentation
+
+   b) **Dynamic Memory Management**
+   - Memory allocation and cleanup:
+     ```c
+     // Allocation
+     game_state = (GlobalGameState*)shmat(shm_id, NULL, 0);
+     ```
+   - Screenshot of `init_game_state()` being used for the memory management of the shared memory (initialization)
+     
+   <img width="442" alt="image" src="https://github.com/user-attachments/assets/87df41a9-4868-4310-8819-2b5be716b3c3" />
+
+   - Screenshot of `cleanup()` being used for the memory management of the shared memory (cleanup)
+     
+   <img width="378" alt="image" src="https://github.com/user-attachments/assets/56e975af-ddab-4e96-8332-a3f16aad7aa9" />
+
+   - Memory initialization:
+     ```c
+     memset(game_state, 0, sizeof(GlobalGameState));
+     ```
+
+## What's Next  
+Here's what we're planning to add before the final version:
 - Better scoring system, with visible score updates  
 - Increasing alien speed as difficulty ramps up  
 - Random power-ups to make things more exciting  

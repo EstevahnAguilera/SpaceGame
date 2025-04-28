@@ -6,6 +6,8 @@ import threading
 import multiprocessing
 import signal
 from os_game_utils import GameOSUtils
+from game_os_wrapper import GameOSWrapper
+from pygame.sprite import Group
 
 from settings import Settings #Creating an instance of settings in this class
 from game_stats import GameStats #Creating and instance of gamestats in this class
@@ -15,6 +17,7 @@ from alien import Alien # Creating an instance of alien in this class
 from button import Button # Creating an instance of button in this class
 from alien_bullet import AlienBullet
 from star_field import StarField
+from scoreboard import Scoreboard
 
 class AlienInvasion:
     #This class will manage game assets and behavior.
@@ -28,6 +31,10 @@ class AlienInvasion:
         self.clock = pygame.time.Clock()
         self.settings = Settings()
         self.os_utils = GameOSUtils()
+        self.game_os = GameOSWrapper()  # Initialize OS wrapper
+
+        # Show cursor by default
+        pygame.mouse.set_visible(True)
 
         self.screen = pygame.display.set_mode((self.settings.screen_width, self.settings.screen_height))
 
@@ -46,14 +53,15 @@ class AlienInvasion:
                                                self.settings.screen_height))
 
         self.stats = GameStats(self)
+        self.sb = Scoreboard(self)
 
         # Create the ship first
         self.ship = Ship(self)
         
         # Then create other game elements
-        self.bullets = pygame.sprite.Group()
-        self.aliens = pygame.sprite.Group()
-        self.alien_bullets = pygame.sprite.Group()
+        self.bullets = Group()
+        self.aliens = Group()
+        self.alien_bullets = Group()
         
         self.star_field = StarField(self.screen, self.settings)
         
@@ -74,7 +82,7 @@ class AlienInvasion:
         self.exit_button = Button(self, "Exit")
         
         # Load high scores
-        self.high_scores = self.os_utils.load_high_scores()
+        self.high_scores = self.game_os.load_high_scores()
         print("Current high scores:", self.high_scores)
         
         # Start background music in a separate thread
@@ -93,86 +101,67 @@ class AlienInvasion:
                     if event.key == pygame.K_q:
                         running = False
                         break
-                    self.check_keydown_events(event)
+                    self._check_keydown_events(event)
                 elif event.type == pygame.KEYUP:
-                    self.check_keyup_events(event)
+                    self._check_keyup_events(event)
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     mouse_pos = pygame.mouse.get_pos()
-                    if self.showing_high_scores:
-                        self._check_back_button(mouse_pos)
-                    elif self.stats.game_over:
-                        self._check_play_again_button(mouse_pos)
-                        self._check_high_scores_button(mouse_pos)
-                        self._check_exit_button(mouse_pos)
-                    elif not self.stats.game_active:
-                        self._check_play_button(mouse_pos)
-                        self._check_high_scores_button(mouse_pos)
+                    self._check_play_button(mouse_pos)
+                    self._check_play_again_button(mouse_pos)
+                    self._check_high_scores_button(mouse_pos)
+                    self._check_back_button(mouse_pos)
+                    self._check_exit_button(mouse_pos)
 
-            # Update the screen
-            self.screen.blit(self.background, (0, 0))
+            # Get game state from C
+            game_state = self.game_os.get_game_state()
             
-            # Update and draw the star field only if game is active
+            # Update ship position based on C state
+            self.ship.rect.x = game_state['player_x']
+            self.ship.rect.y = game_state['player_y']
+            
+            # Update game stats
+            self.stats.score = game_state['score']
+            self.stats.game_active = game_state['game_active']
+            self.stats.game_over = game_state['game_over']
+            self.stats.ships_left = game_state['player_health']
+            
+            # Check if all aliens are destroyed
             if self.stats.game_active:
-                self.star_field.update()
-                self.star_field.draw()
-            
-            if self.showing_high_scores:
-                # Create a semi-transparent overlay
-                overlay = pygame.Surface((self.settings.screen_width, self.settings.screen_height), pygame.SRCALPHA)
-                overlay.fill((0, 0, 0, 200))  # Semi-transparent black
-                self.screen.blit(overlay, (0, 0))
-                
-                # Draw high scores
-                self._draw_high_scores()
-            elif self.stats.game_over:
-                # Draw game over elements
-                self._draw_game_over_elements(self.screen)
-            else:
-                if self.stats.game_active:
-                    # Update game elements
-                    self.ship.update()
-                    self.update_bullets()
-                    self.update_aliens()
+                alien_positions = self.game_os.get_alien_positions()
+                all_aliens_destroyed = True
+                for x, y, active in alien_positions:
+                    if active:
+                        all_aliens_destroyed = False
+                        break
+
+                if all_aliens_destroyed:
+                    # Advance to next level
+                    self.game_os.advance_level()
+                    self.stats.level = self.game_os.get_level()
+                    self.sb.prep_level()
                     
-                    # Draw game elements
-                    self.ship.blitme()
-                    for bullet in self.bullets.sprites():
-                        bullet.draw_bullet()
-                    for bullet in self.alien_bullets.sprites():
-                        bullet.draw_bullet()
-                    self.aliens.draw(self.screen)
-                    self._draw_score()
-                else:
-                    # Draw start screen
-                    self._draw_start_screen()
+                    # Clear existing bullets
+                    self.bullets.empty()
+                    self.alien_bullets.empty()
+                    
+                    # Pause briefly to show level transition
+                    sleep(0.5)
             
-            pygame.display.flip()
+            # Update screen
+            self.update_screen()
             self.clock.tick(60)
-        
-        # Clean up when game loop ends
-        pygame.quit()
-        sys.exit()
 
-    def _collision_handler(self):
-        """Handle collisions in a separate thread"""
-        while True:
-            if self.stats.game_active:
-                # Check bullet-alien collisions
-                self.check_bullet_alien_collisions()
-                
-                # Check aliens reaching bottom
-                self.check_aliens_bottom()
-            sleep(0.016)  # ~60 FPS
+        self.cleanup()
 
-    def check_events(self):
+    def _check_events(self):
         """Respond to keypresses and mouse events."""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit()
             elif event.type == pygame.KEYDOWN:
-                self.check_keydown_events(event)
+                self._check_keydown_events(event)
             elif event.type == pygame.KEYUP:
-                self.check_keyup_events(event)
+                self._check_keyup_events(event)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 if self.stats.game_over:
@@ -182,68 +171,73 @@ class AlienInvasion:
                     self._check_play_button(mouse_pos)
                     self._check_high_scores_button(mouse_pos)
 
-    def check_keydown_events(self, event):
+    def _check_keydown_events(self, event):
         """Respond to keypresses."""
         if event.key == pygame.K_RIGHT:
-            self.ship.moving_right = True
+            self.game_os.update_player_movement(0, 1, 0, 0)
         elif event.key == pygame.K_LEFT:
-            self.ship.moving_left = True
+            self.game_os.update_player_movement(1, 0, 0, 0)
         elif event.key == pygame.K_UP:
-            self.ship.moving_up = True
+            self.game_os.update_player_movement(0, 0, 1, 0)
         elif event.key == pygame.K_DOWN:
-            self.ship.moving_down = True
+            self.game_os.update_player_movement(0, 0, 0, 1)
         elif event.key == pygame.K_q:
             sys.exit()
         elif event.key == pygame.K_SPACE:
-            self.fire_bullet()
+            self.game_os.fire_player_bullet()
     
-    def check_keyup_events(self, event):
+    def _check_keyup_events(self, event):
         """Respond to key releases."""
         if event.key == pygame.K_RIGHT:
-            self.ship.moving_right = False
+            self.game_os.update_player_movement(0, 0, 0, 0)
         elif event.key == pygame.K_LEFT:
-            self.ship.moving_left = False
+            self.game_os.update_player_movement(0, 0, 0, 0)
         elif event.key == pygame.K_UP:
-            self.ship.moving_up = False
+            self.game_os.update_player_movement(0, 0, 0, 0)
         elif event.key == pygame.K_DOWN:
-            self.ship.moving_down = False
+            self.game_os.update_player_movement(0, 0, 0, 0)
 
     def _check_play_button(self, mouse_pos):
         """Start a new game when the player clicks Play."""
         button_clicked = self.play_button.rect.collidepoint(mouse_pos)
         if button_clicked and not self.stats.game_active:
-            print("Play button clicked")
-            self._start_game()
+            self.stats.reset_stats()
+            self.stats.game_active = True
+            self.sb.prep_score()
+            self.sb.prep_level()
+            self.sb.prep_ships()
+            
+            # Reset game state in C
+            self.game_os.cleanup()
+            self.game_os = GameOSWrapper()
+            self.game_os.start_game()
+            
+            # Hide cursor only when game is active
+            if self.stats.game_active:
+                pygame.mouse.set_visible(False)
 
     def _check_play_again_button(self, mouse_pos):
         """Start a new game when the player clicks Play Again."""
         button_clicked = self.play_again_button.rect.collidepoint(mouse_pos)
         if button_clicked and self.stats.game_over:
-            # Reset game stats
-            self.stats.reset_stats()
-            self.stats.game_active = True
             self.stats.game_over = False
-            
-            # Clear any remaining aliens and bullets
-            self.aliens.empty()
-            self.bullets.empty()
-            self.alien_bullets.empty()
-            
-            # Create a new fleet and center the ship
-            self.create_fleet()
-            self.ship.center_ship()
+            self.stats.game_active = True
+            self.game_os.start_game()
+            pygame.mouse.set_visible(False)  # Hide cursor when starting new game
 
     def _check_high_scores_button(self, mouse_pos):
         """Show high scores when the player clicks High Scores."""
         button_clicked = self.high_scores_button.rect.collidepoint(mouse_pos)
         if button_clicked and (self.stats.game_over or not self.stats.game_active):
             self.showing_high_scores = True
+            pygame.mouse.set_visible(True)  # Show cursor in high scores screen
 
     def _check_back_button(self, mouse_pos):
         """Return to previous screen when the player clicks Back."""
         button_clicked = self.back_button.rect.collidepoint(mouse_pos)
         if button_clicked and self.showing_high_scores:
             self.showing_high_scores = False
+            pygame.mouse.set_visible(True)  # Show cursor when returning to menu
 
     def _check_exit_button(self, mouse_pos):
         """Exit the game when the player clicks Exit."""
@@ -277,6 +271,11 @@ class AlienInvasion:
 
     def _draw_high_scores(self):
         """Draw the high scores screen."""
+        # Create a semi-transparent overlay
+        overlay = pygame.Surface((self.settings.screen_width, self.settings.screen_height), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 200))  # Semi-transparent black
+        self.screen.blit(overlay, (0, 0))
+        
         # Draw title
         font = pygame.font.SysFont(self.settings.ui_font, 64)
         title = font.render("High Scores", True, self.settings.ui_highlight_color)
@@ -287,12 +286,29 @@ class AlienInvasion:
         
         # Draw high scores
         font = pygame.font.SysFont(self.settings.ui_font, 48)
-        for i, score in enumerate(self.high_scores[:10]):  # Show top 10 scores
-            score_text = font.render(f"{i+1}. {score}", True, self.settings.ui_color)
-            score_rect = score_text.get_rect()
-            score_rect.centerx = self.screen.get_rect().centerx
-            score_rect.top = 200 + i * 50
-            self.screen.blit(score_text, score_rect)
+        try:
+            # Ensure high scores are loaded
+            if not hasattr(self, 'high_scores') or self.high_scores is None:
+                self.high_scores = self.game_os.load_high_scores()
+            
+            # Sort scores in descending order
+            sorted_scores = sorted(self.high_scores, reverse=True)
+            
+            # Display up to 10 scores
+            for i, score in enumerate(sorted_scores[:10]):
+                score_text = font.render(f"{i+1}. {score}", True, self.settings.ui_color)
+                score_rect = score_text.get_rect()
+                score_rect.centerx = self.screen.get_rect().centerx
+                score_rect.top = 200 + i * 50
+                self.screen.blit(score_text, score_rect)
+        except Exception as e:
+            # If there's an error, display a message
+            error_text = font.render("Error loading high scores", True, self.settings.ui_color)
+            error_rect = error_text.get_rect()
+            error_rect.centerx = self.screen.get_rect().centerx
+            error_rect.top = 200
+            self.screen.blit(error_text, error_rect)
+            print(f"Error loading high scores: {e}")
         
         # Draw back button
         self.back_button.rect.centerx = self.screen.get_rect().centerx
@@ -307,27 +323,13 @@ class AlienInvasion:
             self.bullets.add(new_bullet)
 
     def create_fleet(self):
-        """Create the fleet of aliens"""
-        alien = Alien(self)
-        alien_width, alien_height = alien.rect.size
-
-        # Reduced number of rows and spacing
-        number_rows = 2  # Reduced from 3
-        number_aliens_x = 4  # Reduced from 6
-        
-        for row_number in range(number_rows):
-            for alien_number in range(number_aliens_x):
-                x_position = alien_width + 3 * alien_width * alien_number
-                y_position = alien_height + 2 * alien_height * row_number
-                self.create_alien(x_position, y_position)
+        """Create the fleet of aliens using C game logic"""
+        # The fleet is now created in C's start_game function
+        pass
 
     def create_alien(self, x_position, y_position):
-        #create an alien and place it in a row
-        new_alien = Alien(self)
-        new_alien.x = x_position
-        new_alien.rect.x = x_position
-        new_alien.rect.y = y_position
-        self.aliens.add(new_alien)
+        """This method is no longer needed as aliens are managed by C"""
+        pass
 
     def check_fleet_edges(self):
         #this will take care of the alien if it touches an edge
@@ -368,8 +370,8 @@ class AlienInvasion:
             # Save the score if it's a high score
             if self.stats.score > 0:
                 print(f"Game over! Final score: {self.stats.score}")
-                self.os_utils.save_high_score(self.stats.score)
-                self.high_scores = self.os_utils.load_high_scores()
+                self.game_os.save_high_score(self.stats.score)
+                self.high_scores = self.game_os.load_high_scores()
                 print("Updated high scores:", self.high_scores)
 
     def check_aliens_bottom(self):
@@ -380,69 +382,6 @@ class AlienInvasion:
         """Update the positions of all aliens in the fleet."""
         self.aliens.update()
         
-        # Check for ship-alien collisions
-        if pygame.sprite.spritecollideany(self.ship, self.aliens):
-            # Set game state
-            self.stats.game_active = False
-            self.stats.game_over = True
-            self.stats.ships_left = 0
-            
-            # Save high score
-            if self.stats.score > 0:
-                self.os_utils.save_high_score(self.stats.score)
-                self.high_scores = self.os_utils.load_high_scores()
-            
-            # Clear everything
-            self.aliens.empty()
-            self.bullets.empty()
-            self.alien_bullets.empty()
-            
-            # Clear the screen
-            self.screen.fill(self.settings.bg_color)
-            
-            # Draw background
-            self.screen.blit(self.background, (0, 0))
-            
-            # Create a semi-transparent overlay
-            overlay = pygame.Surface((self.settings.screen_width, self.settings.screen_height), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 200))  # Semi-transparent black
-            self.screen.blit(overlay, (0, 0))
-            
-            # Draw game over message
-            font = pygame.font.SysFont(self.settings.ui_font, 64)
-            game_over_text = font.render("Game Over", True, self.settings.ui_highlight_color)
-            game_over_rect = game_over_text.get_rect()
-            game_over_rect.centerx = self.screen.get_rect().centerx
-            game_over_rect.top = 100
-            self.screen.blit(game_over_text, game_over_rect)
-            
-            # Draw final score
-            score_text = font.render(f"Final Score: {self.stats.score}", True, self.settings.ui_color)
-            score_rect = score_text.get_rect()
-            score_rect.centerx = self.screen.get_rect().centerx
-            score_rect.top = 200
-            self.screen.blit(score_text, score_rect)
-            
-            # Position and draw buttons
-            self.play_again_button.rect.centerx = self.screen.get_rect().centerx
-            self.play_again_button.rect.top = 300
-            self.play_again_button._prep_msg()
-            self.play_again_button.draw_button()
-            
-            self.high_scores_button.rect.centerx = self.screen.get_rect().centerx
-            self.high_scores_button.rect.top = 400
-            self.high_scores_button._prep_msg()
-            self.high_scores_button.draw_button()
-            
-            self.exit_button.rect.centerx = self.screen.get_rect().centerx
-            self.exit_button.rect.top = 500
-            self.exit_button._prep_msg()
-            self.exit_button.draw_button()
-            
-            # Force screen update
-            pygame.display.flip()
-            return
-
         # Handle alien shooting
         for alien in self.aliens.sprites():
             if alien.can_shoot() and len(self.alien_bullets) < self.settings.alien_bullets_allowed:
@@ -466,59 +405,20 @@ class AlienInvasion:
         for bullet in self.alien_bullets.copy():
             if bullet.rect.top >= self.settings.screen_height:
                 self.alien_bullets.remove(bullet)
-        
-        # Check for bullet-alien collisions
-        collisions = pygame.sprite.groupcollide(
-            self.bullets, self.aliens, True, True)
-        
-        # Handle collisions
-        if collisions:
-            for aliens in collisions.values():
-                self.stats.score += len(aliens) * 10
 
-        # Check for alien bullet-ship collisions
-        if pygame.sprite.spritecollideany(self.ship, self.alien_bullets):
-            print("GAME OVER - Ship hit by alien bullet!")
-            self.stats.game_active = False
-            self.stats.game_over = True
-            self.stats.ships_left = 0
-            
-            # Save high score
-            if self.stats.score > 0:
-                print(f"Final score: {self.stats.score}")
-                self.os_utils.save_high_score(self.stats.score)
-                self.high_scores = self.os_utils.load_high_scores()
-            
-            # Clear everything
-            self.aliens.empty()
-            self.bullets.empty()
-            self.alien_bullets.empty()
-            
-            # Force game over screen
-            self.screen.blit(self.background, (0, 0))
-            self._draw_game_over_elements(self.screen)
-            pygame.display.flip()
-            pygame.time.wait(1000)  # Pause for a second to show game over
-
-        # Create new fleet if all aliens are destroyed
-        if not self.aliens:
-            self.bullets.empty()
-            self.alien_bullets.empty()
-            self.stats.wave += 1
-            self.stats.difficulty_multiplier = 1.0 + (self.stats.wave * 0.1)  # Increase difficulty by 10% each wave
-            print(f"Starting wave {self.stats.wave} with difficulty multiplier {self.stats.difficulty_multiplier}")
-            self.create_fleet()
+    def update_alien_bullets(self):
+        """Update the positions of all alien bullets."""
+        # Update bullet positions
+        self.alien_bullets.update()
+        
+        # Remove bullets that have left the screen
+        for bullet in self.alien_bullets.copy():
+            if bullet.rect.top >= self.settings.screen_height:
+                self.alien_bullets.remove(bullet)
 
     def check_bullet_alien_collisions(self):
-        """Respond to bullet-alien collisions."""
-        # Remove any bullets and aliens that have collided.
-        collisions = pygame.sprite.groupcollide(
-            self.bullets, self.aliens, True, True)
-            
-        if collisions:
-            for aliens in collisions.values():
-                self.stats.score += len(aliens) * 10  # Add 10 points per alien hit
-                print(f"Score: {self.stats.score}")  # Debug print
+        """This method is no longer needed as collisions are handled in C."""
+        pass
 
     def update_screen(self):
         """Update images on the screen, and flip to the new screen."""
@@ -526,18 +426,50 @@ class AlienInvasion:
         self.star_field.update()
         self.star_field.draw()
         
-        if self.stats.game_active:
+        if self.showing_high_scores:
+            self._draw_high_scores()
+            pygame.mouse.set_visible(True)  # Ensure cursor is visible in high scores
+        elif self.stats.game_active:
+            # Get positions from C
+            alien_positions = self.game_os.get_alien_positions()
+            bullet_positions = self.game_os.get_bullet_positions()
+            
+            # Draw ship
             self.ship.blitme()
-            for bullet in self.bullets.sprites():
-                bullet.draw_bullet()
-            for bullet in self.alien_bullets.sprites():
-                bullet.draw_bullet()
-            self.aliens.draw(self.screen)
+            
+            # Draw aliens
+            for x, y, active in alien_positions:
+                if active:  # Only draw active aliens
+                    alien = Alien(self)
+                    alien.rect.x = x
+                    alien.rect.y = y
+                    self.screen.blit(alien.image, alien.rect)
+            
+            # Draw bullets
+            for x, y, is_player, active in bullet_positions:
+                if active:  # Only draw active bullets
+                    if is_player:
+                        bullet = Bullet(self)
+                    else:
+                        # Create a temporary alien for the bullet
+                        temp_alien = Alien(self)
+                        temp_alien.rect.x = x
+                        temp_alien.rect.y = y
+                        bullet = AlienBullet(self, temp_alien)
+                    bullet.rect.x = x
+                    bullet.rect.y = y
+                    self.screen.blit(bullet.image, bullet.rect)
+            
+            # Draw score and health
             self._draw_score()
+            self._draw_health_bar()
+            pygame.mouse.set_visible(False)  # Ensure cursor is hidden during gameplay
         elif self.stats.game_over:
             self._draw_game_over_elements(self.screen)
+            pygame.mouse.set_visible(True)  # Ensure cursor is visible in game over screen
         else:
             self._draw_start_screen()
+            pygame.mouse.set_visible(True)  # Ensure cursor is visible in start screen
         
         pygame.display.flip()
 
@@ -549,7 +481,7 @@ class AlienInvasion:
             
         # Create a semi-transparent background for the score
         score_rect = pygame.Rect(0, 0, 200, 100)
-        score_rect.right = self.screen.get_rect().right - 20
+        score_rect.centerx = self.screen.get_rect().centerx
         score_rect.top = 20
         score_surface = pygame.Surface((score_rect.width, score_rect.height), pygame.SRCALPHA)
         score_surface.fill(self.settings.ui_background_color)
@@ -562,17 +494,65 @@ class AlienInvasion:
         score_str = f"Score: {self.stats.score}"
         score_image = font.render(score_str, True, self.settings.ui_color)
         score_rect = score_image.get_rect()
-        score_rect.right = self.screen.get_rect().right - 20
+        score_rect.centerx = self.screen.get_rect().centerx
         score_rect.top = 20
         self.screen.blit(score_image, score_rect)
         
-        # Draw wave number
-        wave_str = f"Wave: {self.stats.wave}"
-        wave_image = font.render(wave_str, True, self.settings.ui_color)
-        wave_rect = wave_image.get_rect()
-        wave_rect.right = self.screen.get_rect().right - 20
-        wave_rect.top = 60
-        self.screen.blit(wave_image, wave_rect)
+        # Draw level number
+        level_str = f"Level: {self.stats.level}"
+        level_image = font.render(level_str, True, self.settings.ui_color)
+        level_rect = level_image.get_rect()
+        level_rect.centerx = self.screen.get_rect().centerx
+        level_rect.top = 60
+        self.screen.blit(level_image, level_rect)
+
+    def _draw_health_bar(self):
+        """Draw the health bar at the top right of the screen."""
+        if self.stats.game_over:
+            return
+
+        # Get current health from game state
+        game_state = self.game_os.get_game_state()
+        current_health = game_state['player_health']
+        max_health = 100  # Maximum health value
+
+        # Health bar dimensions and position
+        bar_width = 150  # Made more compact
+        bar_height = 15  # Made more compact
+        bar_x = self.settings.screen_width - bar_width - 20  # 20 pixels from right edge
+        bar_y = 20  # 20 pixels from top
+
+        # Create a semi-transparent background for the health bar
+        health_rect = pygame.Rect(bar_x - 5, bar_y - 5, bar_width + 10, bar_height + 10)
+        health_surface = pygame.Surface((health_rect.width, health_rect.height), pygame.SRCALPHA)
+        health_surface.fill(self.settings.ui_background_color)
+        self.screen.blit(health_surface, health_rect)
+
+        # Draw background (empty health bar)
+        pygame.draw.rect(self.screen, (50, 50, 50), (bar_x, bar_y, bar_width, bar_height))
+        
+        # Calculate current health width
+        health_width = (current_health / max_health) * bar_width
+        
+        # Draw health bar with color based on health percentage
+        health_percentage = current_health / max_health
+        if health_percentage > 0.6:
+            color = (0, 255, 0)  # Green
+        elif health_percentage > 0.3:
+            color = (255, 255, 0)  # Yellow
+        else:
+            color = (255, 0, 0)  # Red
+            
+        pygame.draw.rect(self.screen, color, (bar_x, bar_y, health_width, bar_height))
+
+        # Draw health text
+        font = pygame.font.SysFont(self.settings.ui_font, self.settings.ui_font_size)
+        health_text = f"HP: {current_health}/{max_health}"
+        text_image = font.render(health_text, True, self.settings.ui_color)
+        text_rect = text_image.get_rect()
+        text_rect.right = bar_x + bar_width
+        text_rect.top = bar_y + bar_height + 5
+        self.screen.blit(text_image, text_rect)
 
     def _draw_game_over_elements(self, surface):
         """Draw game over elements on the given surface."""
@@ -652,10 +632,13 @@ class AlienInvasion:
         self.stats.game_over = True
         self.stats.ships_left = 0
         
+        # Show cursor when game is over
+        pygame.mouse.set_visible(True)
+        
         # Save high score if needed
         if self.stats.score > 0:
-            self.os_utils.save_high_score(self.stats.score)
-            self.high_scores = self.os_utils.load_high_scores()
+            self.game_os.save_high_score(self.stats.score)
+            self.high_scores = self.game_os.load_high_scores()
         
         # Clear all game elements
         self.aliens.empty()
@@ -680,6 +663,20 @@ class AlienInvasion:
         
         # Force screen update
         pygame.display.flip()
+
+    def update_ship_position(self):
+        """Update ship position using OS wrapper"""
+        self.game_os.update_player_position(self.ship.rect.x, self.ship.rect.y)
+
+    def update_score(self, points):
+        """Update score using OS wrapper"""
+        self.game_os.update_score(points)
+        self.stats.score = self.game_os.get_score()
+
+    def cleanup(self):
+        """Cleanup resources"""
+        self.game_os.cleanup()
+        pygame.quit()
 
 def main():
     """Main function to run the game."""
