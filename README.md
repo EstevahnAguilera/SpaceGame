@@ -166,17 +166,10 @@ This demonstrates how different processes can work together in a coordinated man
      - Alien positions and states
      - Bullet positions and states
      - Game status (active/over)
-   - Example from `game_os.c`:
-     ```c
-     int init_game_state() {
-         // Create shared memory segment
-         shm_id = shmget(IPC_PRIVATE, sizeof(GlobalGameState), IPC_CREAT | 0666);
-         // Attach shared memory
-         game_state = (GlobalGameState*)shmat(shm_id, NULL, 0);
-         // Initialize mutex for thread safety
-         pthread_mutex_init(&game_state->game_state.mutex, &attr);
-     }
-     ```
+   - Screenshot proof of shared memory being used within the game:
+
+     <img width="365" alt="image" src="https://github.com/user-attachments/assets/b096adf8-f9f1-4683-9025-16fce67d3c6c" />
+
 
 7. **Memory Management**
    The game demonstrates several memory management concepts:
