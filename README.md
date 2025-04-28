@@ -97,35 +97,54 @@ Bob may be outnumbered, but as he is approached by thousands of Aliens ahead, he
 
 ## OS Concepts Used
 
-OS concepts are still work in progress. We focused on completing the core gameplay mechanics themselves and are now working on integrating OS concepts within it. We currently have process creations and threading at the moment, with IPC, synchronization, and signals & timers on the way.
+The game implements a hybrid architecture where PyGame and Python handle the graphics rendering and input processing, while the core game logic is implemented in C. This implementation allows us to demonstrate several key operating system concepts while abstracting complicated graphics to PyGame. Here's how the system works:
 
-### 1. Process Creation  
-We're using Python's `multiprocessing` module to handle the alien enemies each separate processes. This lets the main game run independently while the aliens are offloaded to child processes.
+The game uses a hybrid architecture where Python and C work together in a coordinated pipeline:
+- PyGame captures user input (keyboard/mouse events)
+- Python processes these events and calls the appropriate C functions through the `GameOSWrapper` interface
+- The C layer computes new positions and game state based on the input
+- The updated state is sent back to Python
+- PyGame renders the new positions and game state
 
-Here is an image to the code snippet within os_game_utils.py where processes are used:
-<img width="831" alt="image" src="https://github.com/user-attachments/assets/2661724c-abbd-4456-bd90-f01b2743da62" />
+Example: When a player presses the left arrow key:
+1. PyGame detects the key press event
+2. Python's `GameOSWrapper` calls `update_player_movement(1, 0, 0, 0)` to signal left movement
+3. The C layer (`game_os.c`) updates the player's position in shared memory
+4. Python retrieves the new position through `get_game_state()`
+5. PyGame renders the ship at the new position
 
-### 2. Threading  
-Threads help the game stay smooth by running several things at once—like reading player input, checking for collisions, and playing background music. That way, the game doesn't freeze when doing something heavy.
+This demonstrates how different processes can work together in a coordinated manner, with each layer handling specific responsibilities:
+- PyGame: Input capture and graphics rendering
+- Python: Event handling and C interface
+- C: Core game logic and state management
 
-Here is an image to the code snippet within os_game_utils.py where threads are used:
-<img width="622" alt="image" src="https://github.com/user-attachments/assets/7de76f6c-fe65-4406-874c-b3e1c5569098" />
+1. **Process Management**
 
 
-### 3. Inter-process Communication (IPC)  
-We plan to use shared memory and message passing between the main game process and the alien wave processes. This will allow us to send commands like when to spawn new enemies, change direction, or increase speed. It will demonstrate how separate processes in an operating system can communicate without interfering with each other.
+2. **Inter-Process Communication (IPC)**
+   The game implements IPC through shared memory and function calls between Python and C. The Python layer communicates game events (like player movement and firing) to the C layer, which processes these events and updates the game state.
 
-Work in Progress: We plan on further iterating upon our code until IPC is added. We wanted to focus on the core gameplay before we added IPC.
+   Example: The `GameOSWrapper` class provides methods like `update_player_movement()` and `fire_player_bullet()` that call corresponding C functions. These functions update the shared game state, allowing the two layers to communicate effectively.
 
-### 4. Synchronization  
-We're planning to implement synchronization tools like locks and semaphores to manage access to shared resources—such as power-ups and the high score file. The goal is to prevent race conditions when two parts of the game (like the player and an alien) try to access or modify the same resource at the same time.
+3. **Threading**
+   The C implementation uses pthreads to handle concurrent operations. Multiple threads are used to manage different aspects of the game simultaneously, such as alien movement, collision detection, and game state updates.
 
-Work in Progress: We plan on further iterating upon our code until synchronization is added. We wanted to focus on the core gameplay before we added synchronization.
+   Example: In `game_os.c`, separate threads are created to handle alien movement and game state updates, allowing these operations to run concurrently without blocking the main game loop.
 
-### 5. Signals and Timers  
-We intend to use signal handling and timers to manage bullet events—like automatically removing bullets after a certain time or when they go off-screen. This is similar to how operating systems use signals and timers to manage timed tasks and alert processes when events occur.
+4. **Synchronization (Mutex)**
+   The game uses mutex locks to protect shared resources and prevent race conditions. The game state structure includes mutexes to ensure thread-safe access to critical data like player position, score, and game status.
 
-Work in Progress: We plan on further iterating upon our code until signals and timers are added. We wanted to focus on the core gameplay before we added signals and timers.
+   Example: The `GameState` structure in `game_os.c` includes a `pthread_mutex_t mutex` that protects critical sections when updating player position or game state. This ensures that only one thread can modify shared data at a time.
+
+5. **File Management**
+   The game implements file operations for persistent storage of high scores. The Python layer handles file I/O operations with proper error handling and synchronization to ensure data consistency.
+
+   Example: In `os_game_utils.py`, the `save_high_score()` and `load_high_scores()` methods use file operations to store and retrieve high scores. These operations are protected by a mutex lock to prevent race conditions when multiple threads try to access the high score file simultaneously.
+
+6. **Memory Management**
+   The game demonstrates efficient memory management through the use of shared memory segments and careful allocation of game objects. The C layer manages memory for game entities (aliens, bullets) while providing controlled access through well-defined interfaces.
+
+   Example: The `GlobalGameState` structure in `game_os.c` pre-allocates arrays for aliens and bullets, with fixed maximum sizes. This approach prevents memory fragmentation and provides predictable memory usage patterns.
 
 ## What's Next  
 Here's what we're planning to add before the final version:
