@@ -13,10 +13,15 @@
 
 // Game constants
 #define MAX_ALIENS 50
-#define BULLET_SPEED 5
+#define BULLET_SPEED 10
+#define ALIEN_BULLET_SPEED 5  // Increased from 5
 #define SCREEN_WIDTH 1200
 #define SCREEN_HEIGHT 800
 #define SHIP_SPEED 5
+
+// Shooting frequency constants
+#define ALIEN_SHOOT_CHANCE 5    // Base chance per frame (out of 100). Controls the base chance of shooting per frame (currently 5%)
+#define ALIEN_SHOOT_DIVISOR 5   // Per-alien chance (1 out of this number)
 
 // File management functions
 #define HIGH_SCORE_FILE "high_scores.json"
@@ -167,7 +172,7 @@ void* game_logic_loop(void* arg) {
                     if (game_state->bullets[i].is_player_bullet) {
                         game_state->bullets[i].y -= BULLET_SPEED;
                     } else {
-                        game_state->bullets[i].y += BULLET_SPEED;
+                        game_state->bullets[i].y += ALIEN_BULLET_SPEED;  // Use faster speed for alien bullets
                     }
 
                     // Remove bullets that are off screen
@@ -224,10 +229,10 @@ void* game_logic_loop(void* arg) {
                 }
             }
 
-            // Random alien shooting
-            if (rand() % 100 < 2) {  // 2% chance per frame
+            // Random alien shooting - increased frequency
+            if (rand() % 100 < ALIEN_SHOOT_CHANCE) {  // Use constant
                 for (int i = 0; i < game_state->num_aliens; i++) {
-                    if (game_state->aliens[i].active && rand() % 10 == 0) {
+                    if (game_state->aliens[i].active && rand() % ALIEN_SHOOT_DIVISOR == 0) {  // Use constant
                         if (game_state->num_bullets < 100) {
                             game_state->bullets[game_state->num_bullets].x = game_state->aliens[i].x;
                             game_state->bullets[game_state->num_bullets].y = game_state->aliens[i].y;
