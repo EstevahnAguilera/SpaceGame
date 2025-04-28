@@ -133,6 +133,10 @@ This demonstrates how different processes can work together in a coordinated man
 
    Example: In `os_game_utils.py`, the `save_high_score()` and `load_high_scores()` methods use file operations to store and retrieve high scores. These operations are protected by a mutex lock to prevent race conditions when multiple threads try to access the high score file simultaneously.
 
+   Screenshot of `save_high_score()` and its use of file management:
+<img width="351" alt="image" src="https://github.com/user-attachments/assets/eaafc8e6-901c-4e61-ba60-35b3de80660c" />
+
+
 4. **Shared Memory**
    - Used for thread communication within the same process
       - The `GlobalGameState` structure holds all shared game state:
