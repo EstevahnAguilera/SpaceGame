@@ -9,10 +9,17 @@ class AlienBullet(Sprite):
         super().__init__()
         self.screen = ai_game.screen
         self.settings = ai_game.settings
-        self.color = (255, 0, 0)  # Red color for alien bullets
         
-        # Create a bullet rect at (0, 0) and then set correct position
-        self.rect = pygame.Rect(0, 0, 3, 15)
+        # Load the bullet image and set its rect
+        try:
+            original_image = pygame.image.load('images/alien_bullet.png')
+            self.image = pygame.transform.scale(original_image, (3, 15))
+        except:
+            # Fallback to a colored rectangle if image loading fails
+            self.image = pygame.Surface((3, 15))
+            self.image.fill((255, 0, 0))  # Red color for alien bullets
+        
+        self.rect = self.image.get_rect()
         self.rect.midbottom = alien.rect.midbottom
         
         # Store the bullet's position as a decimal value
@@ -27,4 +34,4 @@ class AlienBullet(Sprite):
         
     def draw_bullet(self):
         """Draw the bullet to the screen."""
-        pygame.draw.rect(self.screen, self.color, self.rect) 
+        self.screen.blit(self.image, self.rect) 

@@ -499,7 +499,11 @@ class AlienInvasion:
                 if is_player:
                     bullet = Bullet(self)
                 else:
-                    bullet = AlienBullet(self, None)
+                    # Create a temporary alien for the bullet
+                    temp_alien = Alien(self)
+                    temp_alien.rect.x = x
+                    temp_alien.rect.y = y
+                    bullet = AlienBullet(self, temp_alien)
                 bullet.rect.x = x
                 bullet.rect.y = y
                 self.screen.blit(bullet.image, bullet.rect)
