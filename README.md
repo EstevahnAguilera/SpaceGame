@@ -162,7 +162,10 @@ This demonstrates how different processes can work together in a coordinated man
 
 
 6. **Shared Memory**
-   - Used for thread communication within the same process
+   - Used for thread communication within the same process. In this case, the shared memory is so that the Python main thread can access the memory created by the game logic thread in C.
+   
+   - Basically, whenever a user enters input, PyGame and Python capture the users input then sends it via the shared memory segement called `game_state` to the core game logic thread running in C. C does its computations and updates the variables stored within this `game_state` shared memory segment. PyGame and Python then read the variables in the `game_state` shared memory segment and update the graphics to reflect the changes in positions that the threads in C calculated previously.
+  
       - The `GlobalGameState` structure holds all shared game state:
       ```c
       typedef struct {
