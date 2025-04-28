@@ -9,23 +9,41 @@
 ## Demo Video  
 [YouTube Demo Link](https://youtu.be/OggmmaCZkrM)
 
-## Setup
+## Installation and Setup
 
-### Requirements
-To run the game, you’ll need:
-- Python 3.8 or higher
-- The `pygame` library (we also use `multiprocessing` and `threading`)
-- It should work on most platforms including Windows, macOS, or Linux
-
-### How to Run
-1. First, install the required dependencies:
+1. First, create and activate a Python virtual environment:
    ```bash
-   pip install pygame
+   # Create virtual environment
+   python -m venv venv
+
+   # Activate virtual environment
+   # On macOS/Linux:
+   source venv/bin/activate
+   # On Windows:
+   # .\venv\Scripts\activate
    ```
-3. Then just run the game like this:
+
+2. Install the required Python dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Compile the C code:
+   ```bash
+   # Using the provided Makefile
+   make
+   ```
+   This will compile `game_os.c` into a shared library `libgame_os.so` that the Python game uses.
+
+4. Run the game:
    ```bash
    python alien_invasion.py
    ```
+
+## Notes
+- Make sure you have Python 3.x installed
+- The C code compilation requires gcc to be installed
+- The game requires the compiled `libgame_os.so` to run properly
 
 ## Game Overview
 
@@ -33,7 +51,7 @@ To run the game, you’ll need:
 Alien Invasion
 
 ### Game Summary  
-Alien Invasion is a simple top-down arcade shooter inspired by the classic *Space Invaders*. You control a spaceship that slides left and right along the bottom of the screen. Your job is to shoot down waves of aliens before they reach you. If you destroy them all, the game starts a new wave and keeps going. It’s fast, fun, and we’re using it as a creative way to explore operating system concepts through gameplay.
+Alien Invasion is a simple top-down arcade shooter inspired by the classic *Space Invaders*. You control a spaceship that slides left and right along the bottom of the screen. Your job is to shoot down waves of aliens before they reach you. If you destroy them all, the game starts a new wave and keeps going. It's fast, fun, and we're using it as a creative way to explore operating system concepts through gameplay.
 
 As of now, the game is work in progress. We hope to implement a fun user experience with sounds and dynamic gameplay that makes the game progressively challenging while implementing more operating systems concepts.
 
@@ -64,7 +82,7 @@ Each time you clear a wave of aliens, a new one spawns. The new wave might move 
 - You lose if any alien reaches the bottom or crashes into your ship  
 
 ## Story and Narrative  
-There isn’t an interactive storyline yet as the focus of the game is on arcade-style gameplay.
+There isn't an interactive storyline yet as the focus of the game is on arcade-style gameplay. Here is the backstory though:
 
 There was once a man named Bob.
 
@@ -82,13 +100,13 @@ Bob may be outnumbered, but as he is approached by thousands of Aliens ahead, he
 OS concepts are still work in progress. We focused on completing the core gameplay mechanics themselves and are now working on integrating OS concepts within it. We currently have process creations and threading at the moment, with IPC, synchronization, and signals & timers on the way.
 
 ### 1. Process Creation  
-We're using Python’s `multiprocessing` module to handle the alien enemies each separate processes. This lets the main game run independently while the aliens are offloaded to child processes.
+We're using Python's `multiprocessing` module to handle the alien enemies each separate processes. This lets the main game run independently while the aliens are offloaded to child processes.
 
 Here is an image to the code snippet within os_game_utils.py where processes are used:
 <img width="831" alt="image" src="https://github.com/user-attachments/assets/2661724c-abbd-4456-bd90-f01b2743da62" />
 
 ### 2. Threading  
-Threads help the game stay smooth by running several things at once—like reading player input, checking for collisions, and playing background music. That way, the game doesn’t freeze when doing something heavy.
+Threads help the game stay smooth by running several things at once—like reading player input, checking for collisions, and playing background music. That way, the game doesn't freeze when doing something heavy.
 
 Here is an image to the code snippet within os_game_utils.py where threads are used:
 <img width="622" alt="image" src="https://github.com/user-attachments/assets/7de76f6c-fe65-4406-874c-b3e1c5569098" />
@@ -100,7 +118,7 @@ We plan to use shared memory and message passing between the main game process a
 Work in Progress: We plan on further iterating upon our code until IPC is added. We wanted to focus on the core gameplay before we added IPC.
 
 ### 4. Synchronization  
-We’re planning to implement synchronization tools like locks and semaphores to manage access to shared resources—such as power-ups and the high score file. The goal is to prevent race conditions when two parts of the game (like the player and an alien) try to access or modify the same resource at the same time.
+We're planning to implement synchronization tools like locks and semaphores to manage access to shared resources—such as power-ups and the high score file. The goal is to prevent race conditions when two parts of the game (like the player and an alien) try to access or modify the same resource at the same time.
 
 Work in Progress: We plan on further iterating upon our code until synchronization is added. We wanted to focus on the core gameplay before we added synchronization.
 
@@ -109,8 +127,8 @@ We intend to use signal handling and timers to manage bullet events—like autom
 
 Work in Progress: We plan on further iterating upon our code until signals and timers are added. We wanted to focus on the core gameplay before we added signals and timers.
 
-## What’s Next  
-Here’s what we’re planning to add before the final version:
+## What's Next  
+Here's what we're planning to add before the final version:
 - Better scoring system, with visible score updates  
 - Increasing alien speed as difficulty ramps up  
 - Random power-ups to make things more exciting  
