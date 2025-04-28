@@ -71,6 +71,16 @@ class GameOSWrapper:
             'game_over': bool(game_over.value)
         }
     
+    def get_level(self):
+        """Get current level from C"""
+        level = c_int()
+        self.lib.get_level(ctypes.byref(level))
+        return level.value
+
+    def advance_level(self):
+        """Advance to next level in C"""
+        self.lib.advance_level()
+    
     def get_alien_positions(self):
         """Get positions of all aliens from C"""
         positions = (ctypes.c_int * (50 * 3))()  # MAX_ALIENS * 3 (x, y, active)

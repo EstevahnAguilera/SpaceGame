@@ -13,7 +13,6 @@
 
 // Game constants
 #define MAX_ALIENS 50
-#define ALIEN_SPEED 2
 #define BULLET_SPEED 5
 #define SCREEN_WIDTH 1200
 #define SCREEN_HEIGHT 800
@@ -35,6 +34,7 @@ typedef struct {
     int player_moving_right;
     int player_moving_up;
     int player_moving_down;
+    int level;  // Add level tracking
     pthread_mutex_t mutex;
 } GameState;
 
@@ -64,6 +64,7 @@ typedef struct {
     int num_bullets;
     int alien_direction;  // Fleet direction
     int fleet_drop_speed;
+    float alien_speed;  // Add alien speed as a variable
 } GlobalGameState;
 
 // Global variables
@@ -108,8 +109,10 @@ int init_game_state() {
     game_state->game_state.score = 0;
     game_state->game_state.game_active = 0;
     game_state->game_state.game_over = 0;
+    game_state->game_state.level = 1;  // Initialize level
     game_state->alien_direction = 1;
     game_state->fleet_drop_speed = 10;
+    game_state->alien_speed = 2.0;  // Initialize alien speed
 
     return 0;
 }
@@ -141,7 +144,7 @@ void* game_logic_loop(void* arg) {
             // Update alien positions
             for (int i = 0; i < game_state->num_aliens; i++) {
                 if (game_state->aliens[i].active) {
-                    game_state->aliens[i].x += ALIEN_SPEED * game_state->alien_direction;
+                    game_state->aliens[i].x += game_state->alien_speed * game_state->alien_direction;
                     
                     // Check fleet edges
                     if (game_state->aliens[i].x <= 0 || 
@@ -157,7 +160,8 @@ void* game_logic_loop(void* arg) {
                 }
             }
 
-            // Update bullet positions
+            // Update bullet positions and cleanup inactive bullets
+            int active_bullets = 0;
             for (int i = 0; i < game_state->num_bullets; i++) {
                 if (game_state->bullets[i].active) {
                     if (game_state->bullets[i].is_player_bullet) {
@@ -170,9 +174,23 @@ void* game_logic_loop(void* arg) {
                     if (game_state->bullets[i].y < 0 || 
                         game_state->bullets[i].y > SCREEN_HEIGHT) {
                         game_state->bullets[i].active = 0;
+                    } else {
+                        active_bullets++;
                     }
                 }
             }
+
+            // Compact bullet array by moving active bullets to the front
+            int write_index = 0;
+            for (int i = 0; i < game_state->num_bullets; i++) {
+                if (game_state->bullets[i].active) {
+                    if (write_index != i) {
+                        game_state->bullets[write_index] = game_state->bullets[i];
+                    }
+                    write_index++;
+                }
+            }
+            game_state->num_bullets = active_bullets;
 
             // Check collisions
             for (int i = 0; i < game_state->num_bullets; i++) {
@@ -235,6 +253,7 @@ void start_game() {
     game_state->game_state.game_over = 0;
     game_state->game_state.player_health = 100;
     game_state->game_state.score = 0;
+    game_state->game_state.level = 1;  // Reset level
     
     // Create initial fleet
     game_state->num_aliens = 0;
@@ -420,6 +439,41 @@ void load_high_scores(int* scores, int* count) {
             }
         }
     }
+}
+
+// Add new function to get level
+void get_level(int* level) {
+    pthread_mutex_lock(&game_state->game_state.mutex);
+    *level = game_state->game_state.level;
+    pthread_mutex_unlock(&game_state->game_state.mutex);
+}
+
+// Add new function to advance level
+__attribute__((visibility("default"))) void advance_level() {
+    pthread_mutex_lock(&game_state->game_state.mutex);
+    game_state->game_state.level++;
+    
+    // Increase difficulty
+    game_state->fleet_drop_speed += 2;  // Aliens move faster
+    game_state->alien_speed += 0.5;  // Aliens move faster horizontally
+    
+    // Create new fleet
+    game_state->num_aliens = 0;
+    int rows = 3 + (game_state->game_state.level - 1);  // Add one more row per level
+    int cols = 6 + (game_state->game_state.level - 1);  // Add one more column per level
+    
+    for (int y = 0; y < rows; y++) {
+        for (int x = 0; x < cols; x++) {
+            if (game_state->num_aliens < MAX_ALIENS) {
+                game_state->aliens[game_state->num_aliens].x = 100 + x * 80;
+                game_state->aliens[game_state->num_aliens].y = 50 + y * 60;
+                game_state->aliens[game_state->num_aliens].health = 100;
+                game_state->aliens[game_state->num_aliens].active = 1;
+                game_state->num_aliens++;
+            }
+        }
+    }
+    pthread_mutex_unlock(&game_state->game_state.mutex);
 }
 
 // Cleanup function

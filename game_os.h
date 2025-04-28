@@ -22,6 +22,10 @@ void get_game_state(int* player_x, int* player_y, int* player_health,
 void get_alien_positions(int* positions, int* count);
 void get_bullet_positions(int* positions, int* count);
 
+// Level management
+void get_level(int* level);
+void advance_level();
+
 // Cleanup resources
 void cleanup();
 

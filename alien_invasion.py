@@ -122,6 +122,28 @@ class AlienInvasion:
             self.stats.game_over = game_state['game_over']
             self.stats.ships_left = game_state['player_health']
             
+            # Check if all aliens are destroyed
+            if self.stats.game_active:
+                alien_positions = self.game_os.get_alien_positions()
+                all_aliens_destroyed = True
+                for x, y, active in alien_positions:
+                    if active:
+                        all_aliens_destroyed = False
+                        break
+
+                if all_aliens_destroyed:
+                    # Advance to next level
+                    self.game_os.advance_level()
+                    self.stats.level = self.game_os.get_level()
+                    self.sb.prep_level()
+                    
+                    # Clear existing bullets
+                    self.bullets.empty()
+                    self.alien_bullets.empty()
+                    
+                    # Pause briefly to show level transition
+                    sleep(0.5)
+            
             # Update screen
             self.update_screen()
             self.clock.tick(60)
