@@ -128,16 +128,22 @@ This demonstrates how different processes can work together in a coordinated man
 
    Example: The `GameState` structure in `game_os.c` includes a `pthread_mutex_t mutex` that protects critical sections when updating player position or game state. This ensures that only one thread can modify shared data at a time.
 
-3. **File Management**
+   Screenshot of several functions making use of Mutex for protection:
+
+   <img width="417" alt="image" src="https://github.com/user-attachments/assets/98e54725-c3c4-4c75-a619-31b31e267405" />
+
+
+4. **File Management**
    The game implements file operations for persistent storage of high scores. The Python layer handles file I/O operations with proper error handling and synchronization to ensure data consistency.
 
    Example: In `os_game_utils.py`, the `save_high_score()` and `load_high_scores()` methods use file operations to store and retrieve high scores. These operations are protected by a mutex lock to prevent race conditions when multiple threads try to access the high score file simultaneously.
 
    Screenshot of `save_high_score()` and its use of file management:
-<img width="351" alt="image" src="https://github.com/user-attachments/assets/eaafc8e6-901c-4e61-ba60-35b3de80660c" />
+   
+   <img width="351" alt="image" src="https://github.com/user-attachments/assets/eaafc8e6-901c-4e61-ba60-35b3de80660c" />
 
 
-4. **Shared Memory**
+6. **Shared Memory**
    - Used for thread communication within the same process
       - The `GlobalGameState` structure holds all shared game state:
       ```c
@@ -172,7 +178,7 @@ This demonstrates how different processes can work together in a coordinated man
      }
      ```
 
-5. **Memory Management**
+7. **Memory Management**
    The game demonstrates several memory management concepts:
    
    a) **Static Memory Allocation**
@@ -189,10 +195,13 @@ This demonstrates how different processes can work together in a coordinated man
      // Allocation
      game_state = (GlobalGameState*)shmat(shm_id, NULL, 0);
      ```
-<img width="442" alt="image" src="https://github.com/user-attachments/assets/87df41a9-4868-4310-8819-2b5be716b3c3" />
+   - Screenshot of `init_game_state()` being used for the memory management of the shared memory (initialization)
+     
+   <img width="442" alt="image" src="https://github.com/user-attachments/assets/87df41a9-4868-4310-8819-2b5be716b3c3" />
 
-   - Cleanup of the shared memory
-<img width="378" alt="image" src="https://github.com/user-attachments/assets/56e975af-ddab-4e96-8332-a3f16aad7aa9" />
+   - Screenshot of `cleanup()` being used for the memory management of the shared memory (cleanup)
+     
+   <img width="378" alt="image" src="https://github.com/user-attachments/assets/56e975af-ddab-4e96-8332-a3f16aad7aa9" />
 
    - Memory initialization:
      ```c
