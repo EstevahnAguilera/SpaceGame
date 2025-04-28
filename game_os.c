@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <time.h>
 #include <math.h>
+#include <signal.h>
 
 // Game constants
 #define MAX_ALIENS 50
@@ -84,8 +85,30 @@ typedef struct {
     int count;
 } HighScores;
 
+// Cleanup function declaration
+void cleanup();
+
+// Signal handler for cleanup
+static void signal_handler(int signum) {
+    cleanup();
+    exit(0);
+}
+
 // Initialize shared memory and game state
 int init_game_state() {
+    // Set up signal handlers
+    signal(SIGINT, signal_handler);   // Ctrl+C
+    signal(SIGTERM, signal_handler);  // Termination signal
+    signal(SIGSEGV, signal_handler);  // Segmentation fault
+    
+    // First try to clean up any existing shared memory
+    if (game_state != NULL) {
+        pthread_mutex_destroy(&game_state->game_state.mutex);
+        shmdt(game_state);
+        shmctl(shm_id, IPC_RMID, NULL);
+        game_state = NULL;
+    }
+
     // Create shared memory segment
     shm_id = shmget(IPC_PRIVATE, sizeof(GlobalGameState), IPC_CREAT | 0666);
     if (shm_id == -1) {
@@ -97,6 +120,7 @@ int init_game_state() {
     game_state = (GlobalGameState*)shmat(shm_id, NULL, 0);
     if (game_state == (void*)-1) {
         perror("shmat");
+        shmctl(shm_id, IPC_RMID, NULL);
         return -1;
     }
 
@@ -104,7 +128,13 @@ int init_game_state() {
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
     pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
-    pthread_mutex_init(&game_state->game_state.mutex, &attr);
+    if (pthread_mutex_init(&game_state->game_state.mutex, &attr) != 0) {
+        perror("pthread_mutex_init");
+        shmdt(game_state);
+        shmctl(shm_id, IPC_RMID, NULL);
+        game_state = NULL;
+        return -1;
+    }
 
     // Initialize game state
     memset(game_state, 0, sizeof(GlobalGameState));
@@ -458,9 +488,9 @@ __attribute__((visibility("default"))) void advance_level() {
     pthread_mutex_lock(&game_state->game_state.mutex);
     game_state->game_state.level++;
     
-    // Increase difficulty
-    game_state->fleet_drop_speed += 2;  // Aliens move faster
-    game_state->alien_speed += 0.5;  // Aliens move faster horizontally
+    // Increase difficulty more gradually
+    game_state->fleet_drop_speed += 1;  // Reduced from 2 - aliens move slightly faster
+    game_state->alien_speed += 0.2;     // Reduced from 0.5 - aliens move slightly faster horizontally
     
     // Create new fleet
     game_state->num_aliens = 0;
@@ -483,10 +513,21 @@ __attribute__((visibility("default"))) void advance_level() {
 
 // Cleanup function
 void cleanup() {
+    // Stop the game logic thread
     thread_running = 0;
+    
+    // Wait for the game logic thread to finish
     if (game_state != NULL) {
+        pthread_join(game_logic_thread, NULL);
+        
+        // Clean up shared memory
         pthread_mutex_destroy(&game_state->game_state.mutex);
         shmdt(game_state);
         shmctl(shm_id, IPC_RMID, NULL);
+        game_state = NULL;
     }
+    
+    // Reset global variables
+    thread_running = 0;
+    shm_id = 0;
 } 
